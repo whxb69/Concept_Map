@@ -23,21 +23,40 @@ class Newlable(QLineEdit):
         self.press = False
         self.tgt = None
         self.draw = False
+        self.edit = False
+        #TODO:随输入字数变化大小
 
     def mouseDoubleClickEvent(self, event):
+        self.state = 'edit'
         self.setReadOnly(False)
+        self.setAcceptDrops(True)
         self.setStyleSheet("border-width:2px;border-style: solid; "
                            "border-radius: 15px;border-color: rgb(150, 100, 0);")
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            if self.state == 'select':
+                name = self.objectName()
+                if name in win.lines:
+                    win.lines.pop(name)
+                for k in win.lines:
+                    if name in win.lines[k]:
+                        win.lines[k].remove(name)
+                win.update()
+                self.deleteLater()
+        else:
+            win.keyPressEvent(event)
 
     def mousePressEvent(self, QMouseEvent):
         self.press = True
 
     def mouseMoveEvent(self, event):
-        if self.press:
+        if self.press and self.state != 'edit':
             self.mm = True
             if not hasattr(self, 'temp'):
                 self.temp = win.inittag(self.x()+90, self.y()+90)
                 self.temp.setObjectName(self.objectName())
+                self.temp.setText(self.text())
                 self.setObjectName('temp')
                 self.setStyleSheet("border-style:none;background-color:rgb(240,240,240)")
 
@@ -53,36 +72,43 @@ class Newlable(QLineEdit):
                 tx = tag.x()
                 ty = tag.y()
                 distance = math.sqrt((self.x() - tx) ** 2 + (self.y() - ty) ** 2)
-                if distance <= 80.7:
+                if distance <= 90:
                     if tag not in [self.temp, self]:
                         tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
                                           "border-color: rgb(0, 0, 0);background-color: gray;")
                         self.tgt = tag
                 else:
                     tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                      "border-color: rgb(0, 0, 0);")
+                                      "border-color: rgb(0, 0, 0);background-color: rgb(240,240,240);")
                     if self.tgt == tag:
                         self.tgt = None
 
     def mouseReleaseEvent(self, event):
         self.press = False
         if self.state == 'select':
+            self.state = 'edit'
             self.setReadOnly(False)
+            self.setAcceptDrops(True)
             self.setStyleSheet("border-width:2px;border-style: solid; "
                                "border-radius: 15px;border-color: rgb(150, 100, 0);")
-            print(self.acceptDrops())
 
         elif self.state == 'in':
+            self.state = 'edit'
             alltag = win.findChildren(QLineEdit)
             for tag in alltag:
                 if tag.state == 'select':
                     tag.state = None
                     tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                      "border-color: rgb(0, 0, 0);")
+                                      "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
                     break
             self.state = 'select'
             self.setStyleSheet("border-width:3px;border-style: solid; "
                                "border-radius: 15px;border-color: rgb(150, 100, 0);")
+        # elif self.state == 'edit':
+        #     self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
+        #                        "border-color: rgb(240,240,240);background-color:rgb(240,240,240)")
+        #     self.setReadOnly(True)
+        #     self.state = None
 
         if self.mm:
             self.draw = True
@@ -100,17 +126,17 @@ class Newlable(QLineEdit):
             self.deleteLater()
 
     def enterEvent(self, event):
-        if self.state != 'select':
+        if self.state not in ['select','edit']:
             self.state = 'in'
             self.setStyleSheet("border-width:1.5px;border-style: dashed; "
                                "border-radius: 15px;border-color: rgb(0, 0, 0);"
-                               "background-color: (240,240,240)")
+                               "background-color:rgb(240,240,240)")
 
     def leaveEvent(self, event):
-        if self.state != 'select':
+        if self.state not in ['select','edit']:
             self.state = None
             self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                               "border-color: rgb(0, 0, 0);background-color: (240,240,240)")
+                               "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -120,6 +146,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.lines = {}
         self.draw = False
         self.lpos = (None, None)
+        self.arrows = {}
+        self.num = 1
 
     def paintEvent(self, event):
         if self.draw and hasattr(self, 'lines'):
@@ -151,10 +179,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         p3 = n2.p2()
 
         pen.setPen(QPen(Qt.darkRed, 2, Qt.SolidLine))
-        pen.drawPolygon(p1, p2, p3)
+        pen.drawPolygon(p1,p2,p3)
+
+        l = min(p1.x(), p2.x(), p3.x())
+        r = max(p1.x(), p2.x(), p3.x())
+        t = max(p1.y(), p2.y(), p3.y())
+        f = min(p1.y(), p2.y(), p3.y())
+        self.arrows[len(self.arrows)] = [l,r,t,f]
 
     def drawline_pt(self, s, e):
         self.draw = True
+        if e.objectName() in self.lines:
+            if s.objectName() in self.lines[e.objectName()]:
+                return 0
         if s.objectName() not in self.lines:
             self.lines[s.objectName()] = [e.objectName()]
         else:
@@ -169,11 +206,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         for tag in alltag:
             if tag.state:
                 tag.setReadOnly(True)
+                tag.setAcceptDrops(False)
                 tag.setSelection(0, 0)
                 tag.state = None
                 tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                  "border-color: rgb(0, 0, 0);")
+                                  "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
                 break
+
+        #TODO:点三角 新建框
 
     def mouseDoubleClickEvent(self, event):
         wx = self.x()
@@ -184,14 +224,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.inittag(x - wx, y - wy)
 
     def inittag(self, x, y):
-        alltag = self.findChildren(QLineEdit)
-        print([tag.objectName() for tag in alltag])
-        name = 'tag' + str(len(alltag)+1)
+        name = 'tag' + str(self.num)
         exec('self.%s = Newlable(self)' % name)
-        exec('self.%s.setGeometry(x - 90, y - 90, 180, 60)' % name)
+        exec('self.%s.setGeometry(x - 90, y - 75, 180, 50)' % name)
         exec('self.%s.show()' % name)
         exec('self.%s.setObjectName("%s")' % (name, name))
-
+        self.num+=1
         return eval('self.%s'%name)
 
     def modify_txt(self):
