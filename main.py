@@ -24,7 +24,7 @@ class Newlable(QLineEdit):
         self.tgt = None
         self.draw = False
         self.edit = False
-        #TODO:随输入字数变化大小
+        # TODO:随输入字数变化大小
 
     def mouseDoubleClickEvent(self, event):
         self.state = 'edit'
@@ -54,7 +54,7 @@ class Newlable(QLineEdit):
         if self.press and self.state != 'edit':
             self.mm = True
             if not hasattr(self, 'temp'):
-                self.temp = win.inittag(self.x()+90, self.y()+90)
+                self.temp = win.inittag(self.x() + 90, self.y() + 90)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
                 self.setObjectName('temp')
@@ -126,17 +126,18 @@ class Newlable(QLineEdit):
             self.deleteLater()
 
     def enterEvent(self, event):
-        if self.state not in ['select','edit']:
+        if self.state not in ['select', 'edit']:
             self.state = 'in'
             self.setStyleSheet("border-width:1.5px;border-style: dashed; "
                                "border-radius: 15px;border-color: rgb(0, 0, 0);"
                                "background-color:rgb(240,240,240)")
 
     def leaveEvent(self, event):
-        if self.state not in ['select','edit']:
+        if self.state not in ['select', 'edit']:
             self.state = None
             self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
                                "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
+
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -148,6 +149,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.lpos = (None, None)
         self.arrows = {}
         self.num = 1
+        self.arrows_num = 1
+        self.setMouseTracking(True)
+        print(self.hasMouseTracking())
 
     def paintEvent(self, event):
         if self.draw and hasattr(self, 'lines'):
@@ -161,13 +165,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     line.setLength(line.length())
                     pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
                     pen.drawLine(line)
-                    self.drawarrow(pen, line)
-            pen.end()
+                    self.drawarrow(pen, line, ss, ee)
 
-    def drawarrow(self, pen, line):
+    def drawarrow(self, pen, line, s, e):
         v = line.unitVector()
         v.setLength(20)  # 改变单位向量的大小，实际就是改变箭头长度
-        v.translate(QPointF(line.dx()/2, line.dy()/2))
+        v.translate(QPointF(line.dx() / 2, line.dy() / 2))
 
         n = v.normalVector()  # 法向量
         n.setLength(n.length() * 0.5)  # 这里设定箭头的宽度
@@ -179,24 +182,38 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         p3 = n2.p2()
 
         pen.setPen(QPen(Qt.darkRed, 2, Qt.SolidLine))
-        pen.drawPolygon(p1,p2,p3)
+        pen.drawPolygon(p1, p2, p3)
 
         l = min(p1.x(), p2.x(), p3.x())
         r = max(p1.x(), p2.x(), p3.x())
         t = max(p1.y(), p2.y(), p3.y())
         f = min(p1.y(), p2.y(), p3.y())
-        self.arrows[len(self.arrows)] = [l,r,t,f]
+        value = [l, r, t, f, s, e]
+        if value not in self.arrows.values():
+            for k in self.arrows:
+                if s == self.arrows[k][-2] and s == self.arrows[k][-1]:
+                    self.arrows.pop(k)
+            self.arrows[self.arrows_num] = value
+            self.arrows_num += 1
 
     def drawline_pt(self, s, e):
         self.draw = True
+        #两点间已有连线
         if e.objectName() in self.lines:
             if s.objectName() in self.lines[e.objectName()]:
+                # self.lines[s.objectName()].append(e.objectName())
+                # self.lines[e.objectName()].remove(s.objectName())
+                #todo:添加反向线
                 return 0
+        #无s点记录
         if s.objectName() not in self.lines:
             self.lines[s.objectName()] = [e.objectName()]
+        #有s点记录
         else:
+            #删除现有连线
             if e.objectName() in self.lines[s.objectName()]:
                 self.lines[s.objectName()].remove(e.objectName())
+            #添加新连线
             else:
                 self.lines[s.objectName()].append(e.objectName())
         self.update()
@@ -213,14 +230,43 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                                   "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
                 break
 
-        #TODO:点三角 新建框
+        # TODO:点三角 新建框
+        for key in self.arrows:
+            x = event.x()
+            y = event.y()
+            if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
+                    y <= self.arrows[key][2] and y >= self.arrows[key][3]:
+                new = win.inittag(x, y)
+                new.show()
+                self.drawline_pt(self.arrows[key][-2], new)
+                self.drawline_pt(new, self.arrows[key][-1])
+                self.lines[self.arrows[key][-2].objectName()].remove(self.arrows[key][-1].objectName())
+                # self.update()
+                self.arrows.pop(key)
+                return None
+
+    def mouseMoveEvent(self, event):
+        x = event.x()
+        y = event.y()
+        flag = False
+        if len(self.arrows) > 0:
+            for key in self.arrows:
+                if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
+                        y <= self.arrows[key][2] and y >= self.arrows[key][3]:
+                    flag = True
+                else:
+                    pass
+        if flag:
+            self.setCursor(QCursor(Qt.PointingHandCursor))
+        else:
+            self.setCursor(QCursor(Qt.ArrowCursor))
 
     def mouseDoubleClickEvent(self, event):
         wx = self.x()
         wy = self.y()
         x = event.globalX()
         y = event.globalY()
-        
+
         self.inittag(x - wx, y - wy)
 
     def inittag(self, x, y):
@@ -229,8 +275,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         exec('self.%s.setGeometry(x - 90, y - 75, 180, 50)' % name)
         exec('self.%s.show()' % name)
         exec('self.%s.setObjectName("%s")' % (name, name))
-        self.num+=1
-        return eval('self.%s'%name)
+        self.num += 1
+        return eval('self.%s' % name)
 
     def modify_txt(self):
         self.tag1.setTextInteractionFlags(Qt.TextEditorInteraction)
