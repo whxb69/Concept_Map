@@ -1,10 +1,13 @@
 from ui import *
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit
+from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import cgitb
 import math
+from xml.etree import ElementTree as ET
+import time
+import xmltodict
 
 cgitb.enable()
 
@@ -12,24 +15,28 @@ cgitb.enable()
 class Newlable(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(None, parent)
-        self.state = None
+        self.state = 'edit'
         self.setText('New Note')
-        self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                           "border-color: rgb(240,240,240);background-color:rgb(240,240,240)")
-        self.setAcceptDrops(False)
-        self.setReadOnly(True)
-        self.setDisabled(False)
+        self.setStyleSheet("border-width:2px;border-style: solid; "
+                           "border-radius: 15px;border-color: rgb(150, 100, 0);")
+        self.setAcceptDrops(True)
+        self.setReadOnly(False)
+        self.setSelection(0, len(self.text()))
+        self.setFocus()
         self.mm = False  # move mode
         self.press = False
         self.tgt = None
         self.draw = False
-        self.edit = False
+
         # TODO:随输入字数变化大小
+        # TODO:修改时不能点光标
+        # TODO:保存为xml
 
     def mouseDoubleClickEvent(self, event):
         self.state = 'edit'
         self.setReadOnly(False)
         self.setAcceptDrops(True)
+        self.setFocus()
         self.setStyleSheet("border-width:2px;border-style: solid; "
                            "border-radius: 15px;border-color: rgb(150, 100, 0);")
 
@@ -89,6 +96,7 @@ class Newlable(QLineEdit):
             self.state = 'edit'
             self.setReadOnly(False)
             self.setAcceptDrops(True)
+            self.setFocus()
             self.setStyleSheet("border-width:2px;border-style: solid; "
                                "border-radius: 15px;border-color: rgb(150, 100, 0);")
 
@@ -123,6 +131,8 @@ class Newlable(QLineEdit):
                 win.update()
                 self.tgt = None
                 self.mm = False
+            self.temp.setReadOnly(True)
+            self.temp.state = None
             self.deleteLater()
 
     def enterEvent(self, event):
@@ -148,10 +158,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.draw = False
         self.lpos = (None, None)
         self.arrows = {}
-        self.num = 1
+        self.load = False
         self.arrows_num = 1
+        self.num = 1
         self.setMouseTracking(True)
         print(self.hasMouseTracking())
+        self.nodes = {}
+
+        self.action_save.triggered.connect(self.savefile)
+        self.action_open.triggered.connect(self.openfile)
+        self.action_new.triggered.connect(self.newfile)
 
     def paintEvent(self, event):
         if self.draw and hasattr(self, 'lines'):
@@ -198,22 +214,22 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def drawline_pt(self, s, e):
         self.draw = True
-        #两点间已有连线
+        # 两点间已有连线
         if e.objectName() in self.lines:
             if s.objectName() in self.lines[e.objectName()]:
                 # self.lines[s.objectName()].append(e.objectName())
                 # self.lines[e.objectName()].remove(s.objectName())
-                #todo:添加反向线
+                # todo:添加反向线
                 return 0
-        #无s点记录
+        # 无s点记录
         if s.objectName() not in self.lines:
             self.lines[s.objectName()] = [e.objectName()]
-        #有s点记录
+        # 有s点记录
         else:
-            #删除现有连线
+            # 删除现有连线
             if e.objectName() in self.lines[s.objectName()]:
                 self.lines[s.objectName()].remove(e.objectName())
-            #添加新连线
+            # 添加新连线
             else:
                 self.lines[s.objectName()].append(e.objectName())
         self.update()
@@ -221,16 +237,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def mousePressEvent(self, event):
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
+            if not tag.text():
+                tag.deleteLater()
             if tag.state:
                 tag.setReadOnly(True)
                 tag.setAcceptDrops(False)
-                tag.setSelection(0, 0)
+                if tag.state == 'edit':
+                    tag.setSelection(len(tag.text()), len(tag.text()))
+                    tag.setReadOnly(True)
                 tag.state = None
                 tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
                                   "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
                 break
 
-        # TODO:点三角 新建框
         for key in self.arrows:
             x = event.x()
             y = event.y()
@@ -275,11 +294,107 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         exec('self.%s.setGeometry(x - 90, y - 75, 180, 50)' % name)
         exec('self.%s.show()' % name)
         exec('self.%s.setObjectName("%s")' % (name, name))
+        self.nodes[self.num] = {}
         self.num += 1
         return eval('self.%s' % name)
 
     def modify_txt(self):
         self.tag1.setTextInteractionFlags(Qt.TextEditorInteraction)
+
+    def savefile(self):
+        self.nodes = {}
+        alltag = self.findChildren(QLineEdit)
+        for index, tag in enumerate(alltag):
+            self.nodes[tag.objectName()] = {'Info': {'width': str(tag.width()),
+                                                     'fontsize': str(tag.fontInfo().pointSize()),
+                                                     'name': tag.objectName(),
+                                                     'pos': ('%d,%d') % (tag.pos().x(), tag.pos().y())},
+                                            'string': tag.text()}
+            if tag.objectName() in self.lines:
+                cons = ','.join(self.lines[tag.objectName()])
+                self.nodes[tag.objectName()]['connects'] = cons
+            print(self.nodes[tag.objectName()])
+
+        # 通过信息构造xml
+        root = ET.Element('CM_File')  # 创建首节点
+        fid = ET.SubElement(root, 'Fid')  # 增加子节点
+        fid.text = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        nodes = ET.SubElement(root, 'Nodes')
+        for k in self.nodes:
+            node = ET.SubElement(nodes, 'Node', attrib=self.nodes[k]['Info'])
+            string = ET.SubElement(node, 'String')
+            string.text = self.nodes[k]['string']
+            connect = ET.SubElement(node, 'Connect')
+            if 'connects' in self.nodes[k]:
+                connect.text = self.nodes[k]['connects']
+            else:
+                connect.text = 'None'
+        lines = ET.SubElement(root, 'Lines')  # 增加子节点
+        for k in self.lines:
+            line = ET.SubElement(lines, 'Line', attrib={'head': k})
+            line.text = ','.join(self.lines[k])
+
+        w = ET.ElementTree(root)
+
+        FileName, _ = QFileDialog.getSaveFileName(self,"保存概念图", "", "CM Files(*.xml)")
+
+        w.write(FileName, 'utf-8', xml_declaration=True)
+
+    def openfile(self):
+        new = NewWindow()
+
+
+        FileName, _ = QFileDialog.getOpenFileName \
+            (new,
+             "选取文件",
+             "",
+             "XML Files (*.xml);;Scap File(*.scap);;All File(*.*)")
+
+        if not FileName:
+            return 0
+
+        new.show()
+        # new.exec_()
+
+        tree = ET.parse(FileName)
+        # 读取点数据
+        nodes = tree.find('Nodes')
+        for node in nodes:
+            info = node.attrib
+            x, y = info['pos'].split(',')
+            tag = new.inittag(int(x)+90, int(y)+75)   #适应正常初始化，添加偏移量
+            tag.setObjectName(info['name'])
+            tag.state = None
+            tag.setReadOnly(True)
+            tag.setSelection(len(tag.text()), len(tag.text()))
+            tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
+                              "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
+            num = int(info['name'][3:])
+            if num > new.num:
+                new.num = num
+            tag.show()
+
+        new.num+=1     #更新计数器，防止与读取内容冲突
+
+        # 读取线数据
+        lines = tree.find('Lines')
+        for line in lines:
+            head = line.attrib['head']
+            tails = line.text.split(',')
+            self.lines[head] = tails
+        new.draw = True
+        new.update()
+
+    def newfile(self):
+        new = NewWindow()
+        new.show()
+        new.exec_()
+
+
+class NewWindow(Mainwindow):
+    def __init__(self, parent=None):
+        super(NewWindow, self).__init__(parent)
+
 
 
 if __name__ == "__main__":
