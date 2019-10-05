@@ -7,7 +7,6 @@ import cgitb
 import math
 from xml.etree import ElementTree as ET
 import time
-import xmltodict
 
 cgitb.enable()
 
@@ -23,22 +22,47 @@ class Newlable(QLineEdit):
         self.setReadOnly(False)
         self.setSelection(0, len(self.text()))
         self.setFocus()
+        self.setAlignment(Qt.AlignCenter)
         self.mm = False  # move mode
         self.press = False
         self.tgt = None
         self.draw = False
+        self.Bstate = False
+        self.sheet = {'None': "border-width:0px;border-style: solid; "
+                              "border-radius: 15px;border-color: rgb(150, 100, 0);"
+                              "background-color:rgb(240,240,240)",
+                      'edit': "border-width:2px;border-style: solid; "
+                              "border-radius: 15px;border-color: rgb(150, 100, 0);",
+                      'in': "border-width:1.5px;border-style: dashed; "
+                            "border-radius: 15px;border-color: rgb(0, 0, 0);"
+                            "background-color:rgb(240,240,240)",
+                      'B': "border-width:5px;border-style: solid; "
+                           "border-radius: 15px;border-color: rgb(0, 0, 0);"
+                           "background-color:rgb(240,240,240)",
+                      'select':"border-width:3px;border-style: solid; "
+                               "border-radius: 15px;border-color: rgb(150, 100, 0);",
+                      'crash': "border-width: 0px;border-radius: 15px; border-style: solid;"
+                               "border-color: rgb(0, 0, 0);background-color: gray;",
+                      'Bcrash': "border-width: 5px;border-radius: 15px; border-style: solid;"
+                               "border-color: rgb(0, 0, 0);background-color: gray;",
+                      'move': "border-style:none;background-color:rgb(240,240,240)"}
 
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
         # TODO:保存为xml
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        Bcase = menu.addAction("&Bcase")
+        Bcase.triggered.connect(self.B_fun)
+        menu.exec_(event.globalPos())
 
     def mouseDoubleClickEvent(self, event):
         self.state = 'edit'
         self.setReadOnly(False)
         self.setAcceptDrops(True)
         self.setFocus()
-        self.setStyleSheet("border-width:2px;border-style: solid; "
-                           "border-radius: 15px;border-color: rgb(150, 100, 0);")
+        self.setStyleSheet(self.sheet[self.state])
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Delete:
@@ -64,10 +88,12 @@ class Newlable(QLineEdit):
                 self.temp = win.inittag(self.x() + 90, self.y() + 90)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
+                if self.Bstate:
+                    self.temp.setStyleSheet(self.sheet['B'])
+                    self.temp.Bstate = True
                 self.setObjectName('temp')
-                self.setStyleSheet("border-style:none;background-color:rgb(240,240,240)")
+                self.setStyleSheet(self.sheet['move'])
 
-            # if isinstance(temp,Newlable):
             wx = win.x()
             wy = win.y()
             x = event.globalX()
@@ -81,12 +107,16 @@ class Newlable(QLineEdit):
                 distance = math.sqrt((self.x() - tx) ** 2 + (self.y() - ty) ** 2)
                 if distance <= 90:
                     if tag not in [self.temp, self]:
-                        tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                          "border-color: rgb(0, 0, 0);background-color: gray;")
+                        if tag.Bstate:
+                            tag.setStyleSheet(tag.sheet['Bcrash'])
+                        else:
+                            tag.setStyleSheet(tag.sheet['crash'])
                         self.tgt = tag
                 else:
-                    tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                      "border-color: rgb(0, 0, 0);background-color: rgb(240,240,240);")
+                    if tag.Bstate:
+                        tag.setStyleSheet(tag.sheet['B'])
+                    else:
+                        tag.setStyleSheet(tag.sheet['None'])
                     if self.tgt == tag:
                         self.tgt = None
 
@@ -97,26 +127,17 @@ class Newlable(QLineEdit):
             self.setReadOnly(False)
             self.setAcceptDrops(True)
             self.setFocus()
-            self.setStyleSheet("border-width:2px;border-style: solid; "
-                               "border-radius: 15px;border-color: rgb(150, 100, 0);")
+            self.setStyleSheet(self.sheet[self.state])
 
         elif self.state == 'in':
-            self.state = 'edit'
             alltag = win.findChildren(QLineEdit)
             for tag in alltag:
                 if tag.state == 'select':
                     tag.state = None
-                    tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                      "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
+                    tag.setStyleSheet(self.sheet['None'])
                     break
+            self.setStyleSheet(self.sheet['select'])
             self.state = 'select'
-            self.setStyleSheet("border-width:3px;border-style: solid; "
-                               "border-radius: 15px;border-color: rgb(150, 100, 0);")
-        # elif self.state == 'edit':
-        #     self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-        #                        "border-color: rgb(240,240,240);background-color:rgb(240,240,240)")
-        #     self.setReadOnly(True)
-        #     self.state = None
 
         if self.mm:
             self.draw = True
@@ -138,15 +159,22 @@ class Newlable(QLineEdit):
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
             self.state = 'in'
-            self.setStyleSheet("border-width:1.5px;border-style: dashed; "
-                               "border-radius: 15px;border-color: rgb(0, 0, 0);"
-                               "background-color:rgb(240,240,240)")
+            if not self.Bstate:
+                self.setStyleSheet(self.sheet[self.state])
+            else:
+                self.setStyleSheet(self.sheet['B'])
 
     def leaveEvent(self, event):
         if self.state not in ['select', 'edit']:
             self.state = None
-            self.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                               "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
+            if not self.Bstate:
+                self.setStyleSheet(self.sheet['None'])
+            else:
+                self.setStyleSheet(self.sheet['B'])
+
+    def B_fun(self):
+        self.Bstate = True
+        self.setStyleSheet(self.sheet['B'])
 
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
@@ -237,6 +265,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def mousePressEvent(self, event):
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
+            #删除无内容tag
             if not tag.text():
                 tag.deleteLater()
             if tag.state:
@@ -244,11 +273,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 tag.setAcceptDrops(False)
                 if tag.state == 'edit':
                     tag.setSelection(len(tag.text()), len(tag.text()))
-                    tag.setReadOnly(True)
                 tag.state = None
-                tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                                  "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
-                break
+                if not tag.Bstate:
+                    tag.setStyleSheet(tag.sheet['None'])
+                else:
+                    tag.setStyleSheet(tag.sheet['B'])
+                # break
 
         for key in self.arrows:
             x = event.x()
@@ -304,45 +334,46 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def savefile(self):
         self.nodes = {}
         alltag = self.findChildren(QLineEdit)
+
+        # 提取信息
         for index, tag in enumerate(alltag):
-            self.nodes[tag.objectName()] = {'Info': {'width': str(tag.width()),
-                                                     'fontsize': str(tag.fontInfo().pointSize()),
-                                                     'name': tag.objectName(),
-                                                     'pos': ('%d,%d') % (tag.pos().x(), tag.pos().y())},
+            self.nodes[tag.objectName()] = {'Info': {'Width': str(tag.width()),
+                                                     'FontSize': str(tag.fontInfo().pointSize()),
+                                                     'ID': tag.objectName(),
+                                                     'Position': ('%d,%d') % (tag.pos().x(), tag.pos().y()),
+                                                     'Bstate':str(tag.Bstate)},
                                             'string': tag.text()}
             if tag.objectName() in self.lines:
                 cons = ','.join(self.lines[tag.objectName()])
                 self.nodes[tag.objectName()]['connects'] = cons
-            print(self.nodes[tag.objectName()])
 
         # 通过信息构造xml
         root = ET.Element('CM_File')  # 创建首节点
         fid = ET.SubElement(root, 'Fid')  # 增加子节点
         fid.text = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        nodes = ET.SubElement(root, 'Nodes')
+        nodes = ET.SubElement(root, 'Notes')
         for k in self.nodes:
-            node = ET.SubElement(nodes, 'Node', attrib=self.nodes[k]['Info'])
+            node = ET.SubElement(nodes, 'Note', attrib=self.nodes[k]['Info'])
             string = ET.SubElement(node, 'String')
             string.text = self.nodes[k]['string']
-            connect = ET.SubElement(node, 'Connect')
+            connect = ET.SubElement(node, 'ConnectedNoteIDs')
             if 'connects' in self.nodes[k]:
                 connect.text = self.nodes[k]['connects']
             else:
                 connect.text = 'None'
-        lines = ET.SubElement(root, 'Lines')  # 增加子节点
-        for k in self.lines:
-            line = ET.SubElement(lines, 'Line', attrib={'head': k})
-            line.text = ','.join(self.lines[k])
+        # lines = ET.SubElement(root, 'Lines')  # 增加子节点
+        # for k in self.lines:
+        #     line = ET.SubElement(lines, 'Line', attrib={'head': k})
+        #     line.text = ','.join(self.lines[k])
 
         w = ET.ElementTree(root)
 
-        FileName, _ = QFileDialog.getSaveFileName(self,"保存概念图", "", "CM Files(*.xml)")
+        FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
 
         w.write(FileName, 'utf-8', xml_declaration=True)
 
     def openfile(self):
         new = NewWindow()
-
 
         FileName, _ = QFileDialog.getOpenFileName \
             (new,
@@ -353,37 +384,69 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if not FileName:
             return 0
 
-        new.show()
+        # new.show()
         # new.exec_()
 
         tree = ET.parse(FileName)
         # 读取点数据
-        nodes = tree.find('Nodes')
+        nodes = tree.find('Notes')
         for node in nodes:
             info = node.attrib
-            x, y = info['pos'].split(',')
-            tag = new.inittag(int(x)+90, int(y)+75)   #适应正常初始化，添加偏移量
-            tag.setObjectName(info['name'])
+            x, y = info['Position'].split(',')
+            tag = self.inittag(int(float(x)) + 90, int(float(y)) + 75)  # 适应正常初始化，添加偏移量
+
+            id = info['ID']
+            if 'tag' not in id:
+                num = int(id)
+                id = 'tag' + str(id)
+            else:
+                num = int(id[3:])
+            tag.setText(node.find('String').text)
+            tag.setObjectName(id)
             tag.state = None
             tag.setReadOnly(True)
             tag.setSelection(len(tag.text()), len(tag.text()))
             tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
                               "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
-            num = int(info['name'][3:])
-            if num > new.num:
-                new.num = num
+
+            if num > self.num:
+                self.num = num
+
+            cons_n = node.find('ConnectedNoteIDs')
+
+            if cons_n != None:
+                cons_t = cons_n.text
+                if cons_t != 'None':
+                    cons = cons_t.split(',')
+                    temp_n = []
+                    if '-' in cons_t:
+                        for c in cons:
+                            sn, en = [int(n) for n in c.split('-')]
+                            ns = ['tag' + str(n) for n in range(sn, en + 1)]
+                            temp_n += ns
+                        cons = temp_n
+                    else:
+                        if 'tag' not in cons_t:
+                            for c in cons:
+                                temp_n.append('tag' + c.strip())
+                            cons = temp_n
+                    self.lines[id] = cons
+
+            if info['Bstate'] == 'True':
+                tag.Bstate = True
+                tag.setStyleSheet(tag.sheet['B'])
             tag.show()
 
-        new.num+=1     #更新计数器，防止与读取内容冲突
+        self.num += 1  # 更新计数器，防止与读取内容冲突
 
         # 读取线数据
-        lines = tree.find('Lines')
-        for line in lines:
-            head = line.attrib['head']
-            tails = line.text.split(',')
-            self.lines[head] = tails
-        new.draw = True
-        new.update()
+        # lines = tree.find('Lines')
+        # for line in lines:
+        #     head = line.attrib['head']
+        #     tails = line.text.split(',')
+        #     self.lines[head] = tails
+        self.draw = True
+        self.update()
 
     def newfile(self):
         new = NewWindow()
@@ -394,7 +457,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 class NewWindow(Mainwindow):
     def __init__(self, parent=None):
         super(NewWindow, self).__init__(parent)
-
 
 
 if __name__ == "__main__":
