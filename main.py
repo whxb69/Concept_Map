@@ -16,18 +16,6 @@ class Newlable(QLineEdit):
         super().__init__(None, parent)
         self.state = 'edit'
         self.setText('New Note')
-        self.setStyleSheet("border-width:2px;border-style: solid; "
-                           "border-radius: 15px;border-color: rgb(150, 100, 0);")
-        self.setAcceptDrops(True)
-        self.setReadOnly(False)
-        self.setSelection(0, len(self.text()))
-        self.setFocus()
-        self.setAlignment(Qt.AlignCenter)
-        self.mm = False  # move mode
-        self.press = False
-        self.tgt = None
-        self.draw = False
-        self.Bstate = False
         self.sheet = {'None': "border-width:0px;border-style: solid; "
                               "border-radius: 15px;border-color: rgb(150, 100, 0);"
                               "background-color:rgb(240,240,240)",
@@ -45,11 +33,27 @@ class Newlable(QLineEdit):
                                "border-color: rgb(0, 0, 0);background-color: gray;",
                       'Bcrash': "border-width: 5px;border-radius: 15px; border-style: solid;"
                                "border-color: rgb(0, 0, 0);background-color: gray;",
-                      'move': "border-style:none;background-color:rgb(240,240,240)"}
-
+                      'move': "border-width:0px;border-radius: 15px;"
+                              "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)"}
+        self.setStyleSheet(self.sheet['edit'])
+        self.setAcceptDrops(True)
+        self.setReadOnly(False)
+        self.setSelection(0, len(self.text()))
+        self.setFocus()
+        self.setAlignment(Qt.AlignCenter)
+        self.mm = False  # move mode
+        self.press = False
+        self.tgt = None
+        self.draw = False
+        self.Bstate = False
+        
+        self.window = self.parentWidget()
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
-        # TODO:保存为xml
+        # TODO:移动时新tag的sheet不对
+        # TODO:添加多窗口
+        # TODO:edit状态下无法托选
+        # TODO:点击三角添加新tag在在边界tag会出现问题(估计为tag编号存储问题) #问题又没了
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -68,39 +72,47 @@ class Newlable(QLineEdit):
         if event.key() == Qt.Key_Delete:
             if self.state == 'select':
                 name = self.objectName()
-                if name in win.lines:
-                    win.lines.pop(name)
-                for k in win.lines:
-                    if name in win.lines[k]:
-                        win.lines[k].remove(name)
-                win.update()
+                if name in self.window.lines:
+                    self.window.lines.pop(name)
+                for k in self.window.lines:
+                    if name in self.window.lines[k]:
+                        self.window.lines[k].remove(name)
+                self.window.update()
                 self.deleteLater()
         else:
-            win.keyPressEvent(event)
+            self.window.keyPressEvent(event)
 
     def mousePressEvent(self, QMouseEvent):
-        self.press = True
+        if self.state != 'edit':
+            self.press = True
+        else:
+            pass
 
     def mouseMoveEvent(self, event):
         if self.press and self.state != 'edit':
             self.mm = True
             if not hasattr(self, 'temp'):
-                self.temp = win.inittag(self.x() + 90, self.y() + 90)
+                #触发位移时定义占位tag
+                self.temp = self.window.inittag(self.x() + 90, self.y() + 90)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
+                self.temp.setReadOnly(True)
+                self.temp.setAcceptDrops(False)
                 if self.Bstate:
                     self.temp.setStyleSheet(self.sheet['B'])
                     self.temp.Bstate = True
+                else:
+                    self.temp.setStyleSheet('None')
                 self.setObjectName('temp')
                 self.setStyleSheet(self.sheet['move'])
 
-            wx = win.x()
-            wy = win.y()
+            wx = self.window.x()
+            wy = self.window.y()
             x = event.globalX()
             y = event.globalY()
             self.move(x - wx - 90, y - wy - 90)
 
-            alltag = win.findChildren(QLineEdit)
+            alltag = self.window.findChildren(QLineEdit)
             for tag in alltag:
                 tx = tag.x()
                 ty = tag.y()
@@ -130,7 +142,7 @@ class Newlable(QLineEdit):
             self.setStyleSheet(self.sheet[self.state])
 
         elif self.state == 'in':
-            alltag = win.findChildren(QLineEdit)
+            alltag = self.window.findChildren(QLineEdit)
             for tag in alltag:
                 if tag.state == 'select':
                     tag.state = None
@@ -141,19 +153,19 @@ class Newlable(QLineEdit):
 
         if self.mm:
             self.draw = True
-            wx = win.x()
-            wy = win.y()
+            wx = self.window.x()
+            wy = self.window.y()
             x = event.globalX()
             y = event.globalY()
             if self.tgt:
-                win.drawline_pt(self.temp, self.tgt)
+                self.window.drawline_pt(self.temp, self.tgt)
             else:
                 self.temp.move(x - wx - 90, y - wy - 90)
-                win.update()
                 self.tgt = None
                 self.mm = False
             self.temp.setReadOnly(True)
             self.temp.state = None
+            self.window.update()
             self.deleteLater()
 
     def enterEvent(self, event):
@@ -192,6 +204,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setMouseTracking(True)
         print(self.hasMouseTracking())
         self.nodes = {}
+        self.window = self
 
         self.action_save.triggered.connect(self.savefile)
         self.action_open.triggered.connect(self.openfile)
@@ -203,8 +216,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             pen.begin(self)
             for s in self.lines:
                 for l in self.lines[s]:
-                    ss = win.findChild(QLineEdit, s)
-                    ee = win.findChild(QLineEdit, l)
+                    ss = self.window.findChild(QLineEdit, s)
+                    ee = self.window.findChild(QLineEdit, l)
                     line = QLineF(ss.x() + 90, ss.y() + 30, ee.x() + 90, ee.y() + 30)
                     line.setLength(line.length())
                     pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
@@ -262,6 +275,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.lines[s.objectName()].append(e.objectName())
         self.update()
 
+    # def changeEvent(self,event):
+    #     win = self
+
     def mousePressEvent(self, event):
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
@@ -285,12 +301,11 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             y = event.y()
             if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
                     y <= self.arrows[key][2] and y >= self.arrows[key][3]:
-                new = win.inittag(x, y)
+                new = self.window.inittag(x, y)
                 new.show()
                 self.drawline_pt(self.arrows[key][-2], new)
                 self.drawline_pt(new, self.arrows[key][-1])
                 self.lines[self.arrows[key][-2].objectName()].remove(self.arrows[key][-1].objectName())
-                # self.update()
                 self.arrows.pop(key)
                 return None
 
@@ -373,7 +388,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         w.write(FileName, 'utf-8', xml_declaration=True)
 
     def openfile(self):
-        new = NewWindow()
+        alltag = self.window.findChildren(QLineEdit)
+        if len(alltag)==0:      # 当前无标签 在原窗口打开
+            new = self
+        else:                   #当前有标签 新建窗口        
+            self.new = NewWindow()
+            self.new.move(self.x()+100,self.y()+100)
+            new = self.new
 
         FileName, _ = QFileDialog.getOpenFileName \
             (new,
@@ -384,7 +405,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if not FileName:
             return 0
 
-        # new.show()
+        # 
         # new.exec_()
 
         tree = ET.parse(FileName)
@@ -393,25 +414,25 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         for node in nodes:
             info = node.attrib
             x, y = info['Position'].split(',')
-            tag = self.inittag(int(float(x)) + 90, int(float(y)) + 75)  # 适应正常初始化，添加偏移量
+            tag = new.inittag(int(float(x)) + 90, int(float(y)) + 75)  # 适应正常初始化，添加偏移量
 
-            id = info['ID']
-            if 'tag' not in id:
-                num = int(id)
-                id = 'tag' + str(id)
+            nid = info['ID']
+            if 'tag' not in nid:
+                num = int(nid)
+                nid = 'tag' + str(nid)
             else:
-                num = int(id[3:])
+                num = int(nid[3:])
             tag.setText(node.find('String').text)
-            tag.setObjectName(id)
+            tag.setObjectName(nid)
             tag.state = None
             tag.setReadOnly(True)
             tag.setSelection(len(tag.text()), len(tag.text()))
-            tag.setStyleSheet("border-width: 0px;border-radius: 15px; border-style: solid;"
-                              "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)")
+            tag.setStyleSheet(tag.sheet['None'])
 
-            if num > self.num:
-                self.num = num
+            if num > new.num:
+                new.num = num
 
+            #获取链接信息
             cons_n = node.find('ConnectedNoteIDs')
 
             if cons_n != None:
@@ -430,14 +451,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                             for c in cons:
                                 temp_n.append('tag' + c.strip())
                             cons = temp_n
-                    self.lines[id] = cons
+                    new.lines[nid] = cons
 
             if info['Bstate'] == 'True':
                 tag.Bstate = True
                 tag.setStyleSheet(tag.sheet['B'])
             tag.show()
 
-        self.num += 1  # 更新计数器，防止与读取内容冲突
+        new.num += 1  # 更新计数器，防止与读取内容冲突
 
         # 读取线数据
         # lines = tree.find('Lines')
@@ -445,13 +466,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         #     head = line.attrib['head']
         #     tails = line.text.split(',')
         #     self.lines[head] = tails
-        self.draw = True
-        self.update()
+        new.draw = True
+        new.update()
+        new.show()
 
     def newfile(self):
-        new = NewWindow()
-        new.show()
-        new.exec_()
+        self.new = NewWindow()
+        self.new.move(self.x()+100,self.y()+100)
+        self.new.show()
+        # new.show()
+        # new.exec()
 
 
 class NewWindow(Mainwindow):
