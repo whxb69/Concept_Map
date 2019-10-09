@@ -51,7 +51,6 @@ class Newlable(QLineEdit):
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
         # TODO:移动时新tag的sheet不对
-        # TODO:添加多窗口
         # TODO:edit状态下无法托选
         # TODO:点击三角添加新tag在在边界tag会出现问题(估计为tag编号存储问题) #问题又没了
 
@@ -205,8 +204,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         print(self.hasMouseTracking())
         self.nodes = {}
         self.window = self
+        self.filename = None
 
-        self.action_save.triggered.connect(self.savefile)
+        self.action_save.triggered.connect(lambda: self.savefile(self.filename))
+        self.action_copy.triggered.connect(self.saveasfile)
         self.action_open.triggered.connect(self.openfile)
         self.action_new.triggered.connect(self.newfile)
 
@@ -346,7 +347,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def modify_txt(self):
         self.tag1.setTextInteractionFlags(Qt.TextEditorInteraction)
 
-    def savefile(self):
+    def saveasfile(self):
+        self.filename = self.savefile()
+
+    def savefile(self,filename=None):
         self.nodes = {}
         alltag = self.findChildren(QLineEdit)
 
@@ -383,9 +387,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         w = ET.ElementTree(root)
 
-        FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
+        if not filename:
+            FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
+        else:
+            FileName = filename
 
         w.write(FileName, 'utf-8', xml_declaration=True)
+        return FileName
 
     def openfile(self):
         alltag = self.window.findChildren(QLineEdit)
@@ -404,6 +412,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         if not FileName:
             return 0
+        else:
+            new.filename = FileName
 
         # 
         # new.exec_()
@@ -437,7 +447,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
             if cons_n != None:
                 cons_t = cons_n.text
-                if cons_t != 'None':
+                if cons_t not in ['None',None]:
                     cons = cons_t.split(',')
                     temp_n = []
                     if '-' in cons_t:

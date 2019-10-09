@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QAction
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1941, 1157)
+        MainWindow.resize(1200, 800)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
@@ -37,10 +37,15 @@ class Ui_MainWindow(object):
         self.action_save.setObjectName("actionsave")
         self.action_save.setToolTip('保存文件')
 
+        self.action_copy = QAction("&另存为", MainWindow)
+        self.action_copy.setObjectName("actionsave")
+        self.action_copy.setToolTip('另存为文件')
+
         file = self.menubar.addMenu('文件')
         file.addAction(self.action_new)
         file.addAction(self.action_open)
         file.addAction(self.action_save)
+        file.addAction(self.action_copy)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
