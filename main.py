@@ -7,6 +7,8 @@ import cgitb
 import math
 from xml.etree import ElementTree as ET
 import time
+import os
+import sip
 
 cgitb.enable()
 
@@ -77,7 +79,7 @@ class Newlable(QLineEdit):
                     if name in self.window.lines[k]:
                         self.window.lines[k].remove(name)
                 self.window.update()
-                self.deleteLater()
+                sip.delete(self)
         else:
             self.window.keyPressEvent(event)
 
@@ -165,7 +167,7 @@ class Newlable(QLineEdit):
             self.temp.setReadOnly(True)
             self.temp.state = None
             self.window.update()
-            self.deleteLater()
+            sip.delete(self)
 
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
@@ -193,6 +195,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         super(Mainwindow, self).__init__(parent)
         self.setupUi(self)
         # self.lines = []
+        self.setWindowTitle("Concept map")
         self.lines = {}
         self.draw = False
         self.lpos = (None, None)
@@ -276,25 +279,23 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.lines[s.objectName()].append(e.objectName())
         self.update()
 
-    # def changeEvent(self,event):
-    #     win = self
-
     def mousePressEvent(self, event):
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
             #删除无内容tag
             if not tag.text():
-                tag.deleteLater()
-            if tag.state:
-                tag.setReadOnly(True)
-                tag.setAcceptDrops(False)
-                if tag.state == 'edit':
-                    tag.setSelection(len(tag.text()), len(tag.text()))
-                tag.state = None
-                if not tag.Bstate:
-                    tag.setStyleSheet(tag.sheet['None'])
-                else:
-                    tag.setStyleSheet(tag.sheet['B'])
+                sip.delete(tag)
+            else:
+                if tag.state:
+                    tag.setReadOnly(True)
+                    tag.setAcceptDrops(False)
+                    if tag.state == 'edit':
+                        tag.setSelection(len(tag.text()), len(tag.text()))
+                    tag.state = None
+                    if not tag.Bstate:
+                        tag.setStyleSheet(tag.sheet['None'])
+                    else:
+                        tag.setStyleSheet(tag.sheet['B'])
                 # break
 
         for key in self.arrows:
@@ -311,6 +312,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 return None
 
     def mouseMoveEvent(self, event):
+        print(self.num)
         x = event.x()
         y = event.y()
         flag = False
@@ -347,9 +349,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def modify_txt(self):
         self.tag1.setTextInteractionFlags(Qt.TextEditorInteraction)
 
+    #另存为
     def saveasfile(self):
         self.filename = self.savefile()
+        self.setWindowTitle("Concept map - " + os.path.basename(self.filename))
 
+    #保存
     def savefile(self,filename=None):
         self.nodes = {}
         alltag = self.findChildren(QLineEdit)
@@ -414,9 +419,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             return 0
         else:
             new.filename = FileName
-
-        # 
-        # new.exec_()
+            new.setWindowTitle("Concept map - " + os.path.basename(new.filename))
 
         tree = ET.parse(FileName)
         # 读取点数据
@@ -439,6 +442,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             tag.setSelection(len(tag.text()), len(tag.text()))
             tag.setStyleSheet(tag.sheet['None'])
 
+            #更新tag计数 防止计数冲突
             if num > new.num:
                 new.num = num
 
@@ -450,7 +454,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 if cons_t not in ['None',None]:
                     cons = cons_t.split(',')
                     temp_n = []
-                    if '-' in cons_t:
+                    if '-' in cons_t:           #适应sapple文件格式
                         for c in cons:
                             sn, en = [int(n) for n in c.split('-')]
                             ns = ['tag' + str(n) for n in range(sn, en + 1)]
@@ -479,6 +483,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         new.draw = True
         new.update()
         new.show()
+        
 
     def newfile(self):
         self.new = NewWindow()
