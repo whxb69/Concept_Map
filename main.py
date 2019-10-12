@@ -18,9 +18,8 @@ class Newlable(QLineEdit):
         super().__init__(None, parent)
         self.state = 'edit'
         self.setText('New Note')
-        self.sheet = {'None': "border-width:0px;border-style: solid; "
-                              "border-radius: 15px;border-color: rgb(150, 100, 0);"
-                              "background-color:rgb(240,240,240)",
+        self.sheet = {'None': "border-width:0px;border-style: None; "
+                              "border-radius: 15px;background-color:rgb(240,240,240)",
                       'edit': "border-width:2px;border-style: solid; "
                               "border-radius: 15px;border-color: rgb(150, 100, 0);",
                       'in': "border-width:1.5px;border-style: dashed; "
@@ -39,6 +38,7 @@ class Newlable(QLineEdit):
                               "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)"}
         self.setStyleSheet(self.sheet['edit'])
         self.setAcceptDrops(True)
+        self.setDragEnabled(True)
         self.setReadOnly(False)
         self.setSelection(0, len(self.text()))
         self.setFocus()
@@ -52,9 +52,12 @@ class Newlable(QLineEdit):
         self.window = self.parentWidget()
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
-        # TODO:移动时新tag的sheet不对
         # TODO:edit状态下无法托选
+        # TODO:B框和select与edit的结合
         # TODO:点击三角添加新tag在在边界tag会出现问题(估计为tag编号存储问题) #问题又没了
+
+    def changeEvnet(self, evnet):
+        self.window.changed = True
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -67,6 +70,14 @@ class Newlable(QLineEdit):
         self.setReadOnly(False)
         self.setAcceptDrops(True)
         self.setFocus()
+
+        alltag = self.window.findChildren(QLineEdit)
+        for tag in alltag:
+            if tag != self:
+                tag.state = None
+            if not tag.Bstate:
+                tag.setStyleSheet(tag.sheet['None'])
+
         self.setStyleSheet(self.sheet[self.state])
 
     def keyReleaseEvent(self, event):
@@ -79,15 +90,16 @@ class Newlable(QLineEdit):
                     if name in self.window.lines[k]:
                         self.window.lines[k].remove(name)
                 self.window.update()
-                sip.delete(self)
+                self.deleteLater()
         else:
             self.window.keyPressEvent(event)
 
-    def mousePressEvent(self, QMouseEvent):
+    def mousePressEvent(self, event):
         if self.state != 'edit':
             self.press = True
         else:
-            pass
+            event.ignore()
+            #TODO:全局判断鼠标位置 实现光标可点
 
     def mouseMoveEvent(self, event):
         if self.press and self.state != 'edit':
@@ -125,6 +137,8 @@ class Newlable(QLineEdit):
                         else:
                             tag.setStyleSheet(tag.sheet['crash'])
                         self.tgt = tag
+                    else:
+                        tag.setStyleSheet(tag.sheet['None'])
                 else:
                     if tag.Bstate:
                         tag.setStyleSheet(tag.sheet['B'])
@@ -145,7 +159,7 @@ class Newlable(QLineEdit):
         elif self.state == 'in':
             alltag = self.window.findChildren(QLineEdit)
             for tag in alltag:
-                if tag.state == 'select':
+                if tag.state in ['select','edit']:
                     tag.state = None
                     tag.setStyleSheet(self.sheet['None'])
                     break
@@ -167,7 +181,7 @@ class Newlable(QLineEdit):
             self.temp.setReadOnly(True)
             self.temp.state = None
             self.window.update()
-            sip.delete(self)
+            self.deleteLater()
 
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
@@ -204,17 +218,45 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.arrows_num = 1
         self.num = 1
         self.setMouseTracking(True)
-        print(self.hasMouseTracking())
         self.nodes = {}
         self.window = self
         self.filename = None
+        self.changed = False
 
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
         self.action_copy.triggered.connect(self.saveasfile)
         self.action_open.triggered.connect(self.openfile)
         self.action_new.triggered.connect(self.newfile)
 
+    def closeEvent(self, event):
+        #画布有变动
+        if self.changed:
+            messageBox = QMessageBox()
+            messageBox.setWindowTitle('Concept Map')
+            messageBox.setText('是否保存对文件的更改')
+            messageBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            buttonY = messageBox.button(QMessageBox.Yes)
+            buttonY.setText('是')
+            buttonN = messageBox.button(QMessageBox.No)
+            buttonN.setText('否')
+            buttonN = messageBox.button(QMessageBox.Cancel)
+            buttonN.setText('取消')
+            messageBox.exec_()
+
+            if messageBox.clickedButton() == buttonY:
+                if not self.filename:           #新文件
+                    res = self.saveasfile()
+                    if not res:
+                        event.ignore()                    #未完成保存等同取消
+                else:                           #已有文件
+                    self.savefile(self.filename)
+            elif messageBox.clickedButton() == buttonN:
+                event.ignore()                  #不保存
+            else:   
+                pass                            #取消
+
     def paintEvent(self, event):
+        # self.changed = True
         if self.draw and hasattr(self, 'lines'):
             pen = QPainter(self)
             pen.begin(self)
@@ -284,14 +326,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         for tag in alltag:
             #删除无内容tag
             if not tag.text():
-                sip.delete(tag)
+                tag.deleteLater()
             else:
                 if tag.state:
                     tag.setReadOnly(True)
                     tag.setAcceptDrops(False)
                     if tag.state == 'edit':
-                        tag.setSelection(len(tag.text()), len(tag.text()))
-                    tag.state = None
+                        if tag.x() < event.x() and event.x() < tag.x()+150\
+                        and tag.y() < event.y() and event.y() < tag.y()+90:
+                            #TODO:想办法解决光标和鼠标事件冲突
+                            return None
+                        else:
+                            tag.setSelection(len(tag.text()), len(tag.text()))
+                            tag.state = None
                     if not tag.Bstate:
                         tag.setStyleSheet(tag.sheet['None'])
                     else:
@@ -312,7 +359,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 return None
 
     def mouseMoveEvent(self, event):
-        print(self.num)
         x = event.x()
         y = event.y()
         flag = False
@@ -337,6 +383,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.inittag(x - wx, y - wy)
 
     def inittag(self, x, y):
+        self.changed = True
         name = 'tag' + str(self.num)
         exec('self.%s = Newlable(self)' % name)
         exec('self.%s.setGeometry(x - 90, y - 75, 180, 50)' % name)
@@ -352,10 +399,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     #另存为
     def saveasfile(self):
         self.filename = self.savefile()
-        self.setWindowTitle("Concept map - " + os.path.basename(self.filename))
+        if self.filename:
+            self.setWindowTitle("Concept map - " + os.path.basename(self.filename))
+        return self.filename
 
     #保存
     def savefile(self,filename=None):
+        if not filename:
+            FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
+            if not FileName:
+                return None
+        else:
+            FileName = filename
+        
         self.nodes = {}
         alltag = self.findChildren(QLineEdit)
 
@@ -391,11 +447,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         #     line.text = ','.join(self.lines[k])
 
         w = ET.ElementTree(root)
-
-        if not filename:
-            FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
-        else:
-            FileName = filename
 
         w.write(FileName, 'utf-8', xml_declaration=True)
         return FileName
