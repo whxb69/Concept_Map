@@ -8,7 +8,7 @@ import math
 from xml.etree import ElementTree as ET
 import time
 import os
-import sip
+import PyQt5.sip
 
 cgitb.enable()
 
@@ -28,12 +28,12 @@ class Newlable(QLineEdit):
                       'B': "border-width:5px;border-style: solid; "
                            "border-radius: 15px;border-color: rgb(0, 0, 0);"
                            "background-color:rgb(240,240,240)",
-                      'select':"border-width:3px;border-style: solid; "
-                               "border-radius: 15px;border-color: rgb(150, 100, 0);",
+                      'select': "border-width:3px;border-style: solid; "
+                                "border-radius: 15px;border-color: rgb(150, 100, 0);",
                       'crash': "border-width: 0px;border-radius: 15px; border-style: solid;"
                                "border-color: rgb(0, 0, 0);background-color: gray;",
                       'Bcrash': "border-width: 5px;border-radius: 15px; border-style: solid;"
-                               "border-color: rgb(0, 0, 0);background-color: gray;",
+                                "border-color: rgb(0, 0, 0);background-color: gray;",
                       'move': "border-width:0px;border-radius: 15px;"
                               "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)"}
         self.setStyleSheet(self.sheet['edit'])
@@ -48,13 +48,12 @@ class Newlable(QLineEdit):
         self.tgt = None
         self.draw = False
         self.Bstate = False
-        
+
         self.window = self.parentWidget()
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
         # TODO:edit状态下无法托选
         # TODO:B框和select与edit的结合
-        # TODO:点击三角添加新tag在在边界tag会出现问题(估计为tag编号存储问题) #问题又没了
 
     def changeEvnet(self, evnet):
         self.window.changed = True
@@ -90,7 +89,10 @@ class Newlable(QLineEdit):
                     if name in self.window.lines[k]:
                         self.window.lines[k].remove(name)
                 self.window.update()
-                self.deleteLater()
+
+
+                self.deltag()
+
         else:
             self.window.keyPressEvent(event)
 
@@ -99,13 +101,13 @@ class Newlable(QLineEdit):
             self.press = True
         else:
             event.ignore()
-            #TODO:全局判断鼠标位置 实现光标可点
+            # TODO:全局判断鼠标位置 实现光标可点
 
     def mouseMoveEvent(self, event):
         if self.press and self.state != 'edit':
             self.mm = True
             if not hasattr(self, 'temp'):
-                #触发位移时定义占位tag
+                # 触发位移时定义占位tag
                 self.temp = self.window.inittag(self.x() + 90, self.y() + 90)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
@@ -159,7 +161,7 @@ class Newlable(QLineEdit):
         elif self.state == 'in':
             alltag = self.window.findChildren(QLineEdit)
             for tag in alltag:
-                if tag.state in ['select','edit']:
+                if tag.state in ['select', 'edit']:
                     tag.state = None
                     tag.setStyleSheet(self.sheet['None'])
                     break
@@ -181,7 +183,7 @@ class Newlable(QLineEdit):
             self.temp.setReadOnly(True)
             self.temp.state = None
             self.window.update()
-            self.deleteLater()
+            self.deltag()
 
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
@@ -202,6 +204,15 @@ class Newlable(QLineEdit):
     def B_fun(self):
         self.Bstate = True
         self.setStyleSheet(self.sheet['B'])
+
+    def deltag(self):
+        keys= []   #待删除arrows索引
+        if self.window.arrows:
+            for key,value in self.window.arrows.items():
+                if self in value:
+                    keys.append(key)
+        [self.window.arrows.pop(key) for key in keys]
+        self.deleteLater()
 
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
@@ -229,7 +240,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_new.triggered.connect(self.newfile)
 
     def closeEvent(self, event):
-        #画布有变动
+        # 画布有变动
         if self.changed:
             messageBox = QMessageBox()
             messageBox.setWindowTitle('Concept Map')
@@ -244,16 +255,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             messageBox.exec_()
 
             if messageBox.clickedButton() == buttonY:
-                if not self.filename:           #新文件
+                if not self.filename:  # 新文件
                     res = self.saveasfile()
                     if not res:
-                        event.ignore()                    #未完成保存等同取消
-                else:                           #已有文件
+                        event.ignore()  # 未完成保存等同取消
+                else:  # 已有文件
                     self.savefile(self.filename)
             elif messageBox.clickedButton() == buttonN:
-                event.ignore()                  #不保存
-            else:   
-                pass                            #取消
+                event.ignore()  # 不保存
+            else:
+                pass  # 取消
 
     def paintEvent(self, event):
         # self.changed = True
@@ -272,7 +283,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def drawarrow(self, pen, line, s, e):
         v = line.unitVector()
-        v.setLength(20)  # 改变单位向量的大小，实际就是改变箭头长度
+        v.setLength(15)  # 改变单位向量的大小，实际就是改变箭头长度
         v.translate(QPointF(line.dx() / 2, line.dy() / 2))
 
         n = v.normalVector()  # 法向量
@@ -287,6 +298,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         pen.setPen(QPen(Qt.darkRed, 2, Qt.SolidLine))
         pen.drawPolygon(p1, p2, p3)
 
+        #记录箭头位置和头尾节点
         l = min(p1.x(), p2.x(), p3.x())
         r = max(p1.x(), p2.x(), p3.x())
         t = max(p1.y(), p2.y(), p3.y())
@@ -324,17 +336,17 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def mousePressEvent(self, event):
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
-            #删除无内容tag
+            # 删除无内容tag
             if not tag.text():
-                tag.deleteLater()
+                tag.deltag()
             else:
                 if tag.state:
                     tag.setReadOnly(True)
                     tag.setAcceptDrops(False)
                     if tag.state == 'edit':
-                        if tag.x() < event.x() and event.x() < tag.x()+150\
-                        and tag.y() < event.y() and event.y() < tag.y()+90:
-                            #TODO:想办法解决光标和鼠标事件冲突
+                        if tag.x() < event.x() and event.x() < tag.x() + 150 \
+                                and tag.y() < event.y() and event.y() < tag.y() + 90:
+                            # TODO:想办法解决光标和鼠标事件冲突
                             return None
                         else:
                             tag.setSelection(len(tag.text()), len(tag.text()))
@@ -396,22 +408,22 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def modify_txt(self):
         self.tag1.setTextInteractionFlags(Qt.TextEditorInteraction)
 
-    #另存为
+    # 另存为
     def saveasfile(self):
         self.filename = self.savefile()
         if self.filename:
             self.setWindowTitle("Concept map - " + os.path.basename(self.filename))
         return self.filename
 
-    #保存
-    def savefile(self,filename=None):
+    # 保存
+    def savefile(self, filename=None):
         if not filename:
             FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
             if not FileName:
                 return None
         else:
             FileName = filename
-        
+
         self.nodes = {}
         alltag = self.findChildren(QLineEdit)
 
@@ -421,7 +433,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                                                      'FontSize': str(tag.fontInfo().pointSize()),
                                                      'ID': tag.objectName(),
                                                      'Position': ('%d,%d') % (tag.pos().x(), tag.pos().y()),
-                                                     'Bstate':str(tag.Bstate)},
+                                                     'Bstate': str(tag.Bstate)},
                                             'string': tag.text()}
             if tag.objectName() in self.lines:
                 cons = ','.join(self.lines[tag.objectName()])
@@ -453,11 +465,11 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def openfile(self):
         alltag = self.window.findChildren(QLineEdit)
-        if len(alltag)==0:      # 当前无标签 在原窗口打开
+        if len(alltag) == 0:  # 当前无标签 在原窗口打开
             new = self
-        else:                   #当前有标签 新建窗口        
+        else:  # 当前有标签 新建窗口
             self.new = NewWindow()
-            self.new.move(self.x()+100,self.y()+100)
+            self.new.move(self.x() + 100, self.y() + 100)
             new = self.new
 
         FileName, _ = QFileDialog.getOpenFileName \
@@ -493,19 +505,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             tag.setSelection(len(tag.text()), len(tag.text()))
             tag.setStyleSheet(tag.sheet['None'])
 
-            #更新tag计数 防止计数冲突
+            # 更新tag计数 防止计数冲突
             if num > new.num:
                 new.num = num
 
-            #获取链接信息
+            # 获取链接信息
             cons_n = node.find('ConnectedNoteIDs')
 
             if cons_n != None:
                 cons_t = cons_n.text
-                if cons_t not in ['None',None]:
+                if cons_t not in ['None', None]:
                     cons = cons_t.split(',')
                     temp_n = []
-                    if '-' in cons_t:           #适应sapple文件格式
+                    if '-' in cons_t:  # 适应sapple文件格式
                         for c in cons:
                             sn, en = [int(n) for n in c.split('-')]
                             ns = ['tag' + str(n) for n in range(sn, en + 1)]
@@ -534,11 +546,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         new.draw = True
         new.update()
         new.show()
-        
 
     def newfile(self):
         self.new = NewWindow()
-        self.new.move(self.x()+100,self.y()+100)
+        self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
         # new.show()
         # new.exec()

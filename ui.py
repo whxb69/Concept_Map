@@ -9,11 +9,15 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QAction
 
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.setWindowIcon(QtGui.QIcon('concept.png'))
-        MainWindow.resize(1200, 800)
+        MainWindow.setWindowIcon(QtGui.QIcon(r'src\concept.png'))
+        desktop = QtWidgets.QApplication.desktop()
+        self.screenWidth = desktop.width() * 0.5
+        self.screenHeight = desktop.height() * 0.7
+        MainWindow.resize(self.screenWidth , self.screenHeight)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
@@ -54,4 +58,3 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-
