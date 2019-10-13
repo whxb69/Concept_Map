@@ -41,7 +41,7 @@ class Newlable(QLineEdit):
         self.setDragEnabled(True)
         self.setReadOnly(False)
         self.setSelection(0, len(self.text()))
-        self.setFocus()
+        # self.setFocus()
         self.setAlignment(Qt.AlignCenter)
         self.mm = False  # move mode
         self.press = False
@@ -54,6 +54,7 @@ class Newlable(QLineEdit):
         # TODO:修改时不能点光标
         # TODO:edit状态下无法托选
         # TODO:B框和select与edit的结合
+        # TODO:连线后B状态消失 估计问题在temp
 
     def changeEvnet(self, evnet):
         self.window.changed = True
@@ -89,7 +90,6 @@ class Newlable(QLineEdit):
                     if name in self.window.lines[k]:
                         self.window.lines[k].remove(name)
                 self.window.update()
-
 
                 self.deltag()
 
@@ -206,9 +206,9 @@ class Newlable(QLineEdit):
         self.setStyleSheet(self.sheet['B'])
 
     def deltag(self):
-        keys= []   #待删除arrows索引
+        keys = []  # 待删除arrows索引
         if self.window.arrows:
-            for key,value in self.window.arrows.items():
+            for key, value in self.window.arrows.items():
                 if self in value:
                     keys.append(key)
         [self.window.arrows.pop(key) for key in keys]
@@ -233,11 +233,30 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.window = self
         self.filename = None
         self.changed = False
+        self.setAcceptDrops(True)
 
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
         self.action_copy.triggered.connect(self.saveasfile)
         self.action_open.triggered.connect(self.openfile)
         self.action_new.triggered.connect(self.newfile)
+
+        self.label_tag = Dlabel(self)
+        self.label_tag.setObjectName('tag')
+        self.label_tag.setGeometry(
+            QtCore.QRect(0, 0.25 * self.screenHeight, 0.1 * self.screenWidth, 0.5 * self.screenHeight))
+
+        self.label_rel = Dlabel(self)
+        self.label_rel.setObjectName('rel')
+        self.label_rel.setGeometry(
+            QtCore.QRect(0.9 * self.screenWidth, 0.25 * self.screenHeight, 0.1 * self.screenWidth,
+                         0.5 * self.screenHeight))
+
+    def resizeEvent(self, event):
+        # 保持Dlabel相对方位和大小
+        self.label_tag.resize(0.1 * self.width(), 0.5 * self.height())
+        self.label_tag.move(0, 0.25 * self.height())
+        self.label_rel.resize(0.1 * self.width(), 0.5 * self.height())
+        self.label_rel.move(0.9 * self.width(), 0.25 * self.height())
 
     def closeEvent(self, event):
         # 画布有变动
@@ -298,7 +317,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         pen.setPen(QPen(Qt.darkRed, 2, Qt.SolidLine))
         pen.drawPolygon(p1, p2, p3)
 
-        #记录箭头位置和头尾节点
+        # 记录箭头位置和头尾节点
         l = min(p1.x(), p2.x(), p3.x())
         r = max(p1.x(), p2.x(), p3.x())
         t = max(p1.y(), p2.y(), p3.y())
@@ -453,10 +472,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 connect.text = self.nodes[k]['connects']
             else:
                 connect.text = 'None'
-        # lines = ET.SubElement(root, 'Lines')  # 增加子节点
-        # for k in self.lines:
-        #     line = ET.SubElement(lines, 'Line', attrib={'head': k})
-        #     line.text = ','.join(self.lines[k])
 
         w = ET.ElementTree(root)
 
@@ -536,13 +551,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             tag.show()
 
         new.num += 1  # 更新计数器，防止与读取内容冲突
-
-        # 读取线数据
-        # lines = tree.find('Lines')
-        # for line in lines:
-        #     head = line.attrib['head']
-        #     tails = line.text.split(',')
-        #     self.lines[head] = tails
         new.draw = True
         new.update()
         new.show()
@@ -551,13 +559,59 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.new = NewWindow()
         self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
-        # new.show()
-        # new.exec()
 
 
 class NewWindow(Mainwindow):
     def __init__(self, parent=None):
         super(NewWindow, self).__init__(parent)
+
+
+class Dlabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(None, parent)
+        self.window = self.parentWidget()
+        self.setAcceptDrops(True)
+        self.setStyleSheet("border-width:0px;border-style: None; "
+                           "border-radius: 15px;background-color:rgb(240,240,240)")
+
+    def leaveEvent(self, event):
+        self.setStyleSheet("border-width:0px;border-style: None; "
+                           "border-radius: 15px;background-color:rgb(240,240,240)")
+        self.window.setCursor(QCursor(Qt.ArrowCursor))
+
+    def dropEvent(self, event):
+        text = event.mimeData().text()
+        texts = text.split('\n')
+        if self.objectName() == 'tag':
+            for index, tag in enumerate(texts):
+                new = self.window.inittag(0, 0)
+                new.move(self.width() + 20, self.y() + (index + 1) * 80)
+                new.setStyleSheet(new.sheet['B'])
+                new.Bstate = True
+                new.state = None
+                new.setReadOnly(True)
+                new.setText(tag)
+        else:
+            for index, tag in enumerate(texts):
+                new = self.window.inittag(0, 0)
+                new.move(self.window.width() - self.width() - new.width() - 20, self.y() + (index + 1) * 80)
+                new.setStyleSheet(new.sheet['None'])
+                new.setReadOnly(True)
+                new.state = None
+                new.setText(tag)
+
+    def dragLeaveEvent(self, event):
+        self.setStyleSheet("border-width:0px;border-style: None; "
+                           "border-radius: 15px;background-color:rgb(240,240,240)")
+        self.window.setCursor(QCursor(Qt.ArrowCursor))
+
+
+    def dragEnterEvent(self, event):
+        self.setStyleSheet("border-width:0px;border-style: None; "
+                           "border-radius: 15px;background-color:grey")
+        self.window.setCursor(QCursor(Qt.DragCopyCursor))
+        #接受事件 将事件转到dropevent
+        event.accept()
 
 
 if __name__ == "__main__":
