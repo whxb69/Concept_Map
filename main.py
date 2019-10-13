@@ -49,12 +49,15 @@ class Newlable(QLineEdit):
         self.draw = False
         self.Bstate = False
 
+        self.opos = None
+
         self.window = self.parentWidget()
         # TODO:随输入字数变化大小
         # TODO:修改时不能点光标
         # TODO:edit状态下无法托选
         # TODO:B框和select与edit的结合
         # TODO:连线后B状态消失 估计问题在temp
+        # TODO:选框和新建tag冲突
 
     def changeEvnet(self, evnet):
         self.window.changed = True
@@ -102,6 +105,12 @@ class Newlable(QLineEdit):
         else:
             event.ignore()
             # TODO:全局判断鼠标位置 实现光标可点
+
+    def moveEvent(self, event):
+        if not self.opos:
+            self.opos = event.pos()
+        if self.window.selects:
+            pass
 
     def mouseMoveEvent(self, event):
         if self.press and self.state != 'edit':
@@ -231,9 +240,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setMouseTracking(True)
         self.nodes = {}
         self.window = self
+        self.press = False
         self.filename = None
         self.changed = False
         self.setAcceptDrops(True)
+        self.press_s = None
+        self.selects = []
 
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
         self.action_copy.triggered.connect(self.saveasfile)
@@ -243,20 +255,20 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.label_tag = Dlabel(self)
         self.label_tag.setObjectName('tag')
         self.label_tag.setGeometry(
-            QtCore.QRect(0, 0.25 * self.screenHeight, 0.1 * self.screenWidth, 0.5 * self.screenHeight))
+            QtCore.QRect(0, 0.25 * self.screenHeight, 20, 0.5 * self.screenHeight))
 
         self.label_rel = Dlabel(self)
         self.label_rel.setObjectName('rel')
         self.label_rel.setGeometry(
-            QtCore.QRect(0.9 * self.screenWidth, 0.25 * self.screenHeight, 0.1 * self.screenWidth,
+            QtCore.QRect(self.screenWidth - 20, 0.25 * self.screenHeight, 20,
                          0.5 * self.screenHeight))
 
     def resizeEvent(self, event):
         # 保持Dlabel相对方位和大小
-        self.label_tag.resize(0.1 * self.width(), 0.5 * self.height())
+        self.label_tag.resize(20, 0.5 * self.height())
         self.label_tag.move(0, 0.25 * self.height())
-        self.label_rel.resize(0.1 * self.width(), 0.5 * self.height())
-        self.label_rel.move(0.9 * self.width(), 0.25 * self.height())
+        self.label_rel.resize(20, 0.5 * self.height())
+        self.label_rel.move(self.width() - 20, 0.25 * self.height())
 
     def closeEvent(self, event):
         # 画布有变动
@@ -286,10 +298,18 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 pass  # 取消
 
     def paintEvent(self, event):
-        # self.changed = True
-        if self.draw and hasattr(self, 'lines'):
-            pen = QPainter(self)
+        pen = QPainter(self)
+        if not pen.isActive():
             pen.begin(self)
+        if hasattr(self, 'press_e'):
+            if self.press_s and self.press and self.press_e:
+                pen.setPen(QPen(Qt.black, 1, Qt.DashLine))
+                scene = QGraphicsScene()
+                scene.setSceneRect(0, 0, self.width(), self.height())
+                rect = QRectF(self.press_s, self.press_e)
+                pen.drawRect(rect)
+
+        if self.draw and hasattr(self, 'lines'):
             for s in self.lines:
                 for l in self.lines[s]:
                     ss = self.window.findChild(QLineEdit, s)
@@ -353,6 +373,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.update()
 
     def mousePressEvent(self, event):
+        # 标记按下和坐标
+        self.press = True
+        self.press_s = event.pos()
+
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
             # 删除无内容tag
@@ -389,21 +413,41 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.arrows.pop(key)
                 return None
 
+    def mouseReleaseEvent(self, event):
+        if self.press_s and self.press_e:
+            area = QRect(self.press_s, self.press_e)
+            self.press = False
+            self.press_s = None
+            self.press_e = None
+            self.update()
+            self.selects = []
+            alltag = self.findChildren(Newlable)
+            for tag in alltag:
+                if area.contains(tag.x() + 75, tag.y() + 30):
+                    self.selects.append(tag)
+                    tag.state = 'select'
+                    tag.setStyleSheet(tag.sheet[tag.state])
+
     def mouseMoveEvent(self, event):
-        x = event.x()
-        y = event.y()
-        flag = False
-        if len(self.arrows) > 0:
-            for key in self.arrows:
-                if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
-                        y <= self.arrows[key][2] and y >= self.arrows[key][3]:
-                    flag = True
-                else:
-                    pass
-        if flag:
-            self.setCursor(QCursor(Qt.PointingHandCursor))
+        if self.press:
+            self.press_e = event.pos()
+            self.update()
+
         else:
-            self.setCursor(QCursor(Qt.ArrowCursor))
+            x = event.x()
+            y = event.y()
+            flag = False
+            if len(self.arrows) > 0:
+                for key in self.arrows:
+                    if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
+                            y <= self.arrows[key][2] and y >= self.arrows[key][3]:
+                        flag = True
+                    else:
+                        pass
+            if flag:
+                self.setCursor(QCursor(Qt.PointingHandCursor))
+            else:
+                self.setCursor(QCursor(Qt.ArrowCursor))
 
     def mouseDoubleClickEvent(self, event):
         wx = self.x()
@@ -483,7 +527,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if len(alltag) == 0:  # 当前无标签 在原窗口打开
             new = self
         else:  # 当前有标签 新建窗口
-            self.new = NewWindow()
+            self.new = Mainwindow()
             self.new.move(self.x() + 100, self.y() + 100)
             new = self.new
 
@@ -556,14 +600,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         new.show()
 
     def newfile(self):
-        self.new = NewWindow()
+        self.new = Mainwindow()
         self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
-
-
-class NewWindow(Mainwindow):
-    def __init__(self, parent=None):
-        super(NewWindow, self).__init__(parent)
 
 
 class Dlabel(QLabel):
@@ -600,17 +639,18 @@ class Dlabel(QLabel):
                 new.state = None
                 new.setText(tag)
 
+        # TODO：检测生成的tag位置 防止多次生成重叠
+
     def dragLeaveEvent(self, event):
         self.setStyleSheet("border-width:0px;border-style: None; "
                            "border-radius: 15px;background-color:rgb(240,240,240)")
         self.window.setCursor(QCursor(Qt.ArrowCursor))
 
-
     def dragEnterEvent(self, event):
         self.setStyleSheet("border-width:0px;border-style: None; "
                            "border-radius: 15px;background-color:grey")
         self.window.setCursor(QCursor(Qt.DragCopyCursor))
-        #接受事件 将事件转到dropevent
+        # 接受事件 将事件转到dropevent
         event.accept()
 
 
