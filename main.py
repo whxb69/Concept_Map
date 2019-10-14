@@ -16,6 +16,7 @@ cgitb.enable()
 class Newlable(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(None, parent)
+        self.textChanged.connect(self.widthchange)
         self.state = 'edit'
         self.setText('New Note')
         self.sheet = {'None': "border-width:0px;border-style: None; "
@@ -49,15 +50,21 @@ class Newlable(QLineEdit):
         self.draw = False
         self.Bstate = False
 
+
         self.opos = None
 
         self.window = self.parentWidget()
-        # TODO:随输入字数变化大小
+        # TODO:画框和tag的edit冲突
         # TODO:修改时不能点光标
         # TODO:edit状态下无法托选
         # TODO:B框和select与edit的结合
         # TODO:连线后B状态消失 估计问题在temp
-        # TODO:选框和新建tag冲突
+
+    def widthchange(self):
+        length = self.fontMetrics().width(self.text())
+        s_size = length/len(self.text())
+        if length>=self.width()-2*s_size:
+            self.resize(length+2*s_size,self.height())
 
     def changeEvnet(self, evnet):
         self.window.changed = True
@@ -95,7 +102,6 @@ class Newlable(QLineEdit):
                 self.window.update()
 
                 self.deltag()
-
         else:
             self.window.keyPressEvent(event)
 
@@ -140,8 +146,10 @@ class Newlable(QLineEdit):
             for tag in alltag:
                 tx = tag.x()
                 ty = tag.y()
-                distance = math.sqrt((self.x() - tx) ** 2 + (self.y() - ty) ** 2)
-                if distance <= 90:
+                rect = QRect(QPoint(tx,ty),QPoint(tx+tag.width(),ty+tag.height()))
+                point = QPoint(event.globalX()-self.window.x(),
+                event.globalY()-self.window.y()-tag.height())
+                if rect.contains(point):
                     if tag not in [self.temp, self]:
                         if tag.Bstate:
                             tag.setStyleSheet(tag.sheet['Bcrash'])
@@ -177,6 +185,7 @@ class Newlable(QLineEdit):
             self.setStyleSheet(self.sheet['select'])
             self.state = 'select'
 
+        #release结束移动
         if self.mm:
             self.draw = True
             wx = self.window.x()
@@ -184,13 +193,21 @@ class Newlable(QLineEdit):
             x = event.globalX()
             y = event.globalY()
             if self.tgt:
+                #连接后画线
                 self.window.drawline_pt(self.temp, self.tgt)
+                if self.tgt.Bstate:
+                    self.tgt.setStyleSheet(self.temp.sheet['B'])
+                else:
+                    self.tgt.setStyleSheet(self.tgt.sheet['None'])
             else:
+                #非连接 移动tag
                 self.temp.move(x - wx - 90, y - wy - 90)
                 self.tgt = None
                 self.mm = False
             self.temp.setReadOnly(True)
             self.temp.state = None
+            if self.temp.Bstate:
+                self.temp.setStyleSheet(self.temp.sheet['B'])
             self.window.update()
             self.deltag()
 
@@ -314,7 +331,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 for l in self.lines[s]:
                     ss = self.window.findChild(QLineEdit, s)
                     ee = self.window.findChild(QLineEdit, l)
-                    line = QLineF(ss.x() + 90, ss.y() + 30, ee.x() + 90, ee.y() + 30)
+                    line = QLineF(ss.x() + ss.width()/2, ss.y() + ss.height()/2, 
+                    ee.x() + ee.width()/2, ee.y() + ee.height()/2)
                     line.setLength(line.length())
                     pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
                     pen.drawLine(line)
@@ -414,19 +432,21 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 return None
 
     def mouseReleaseEvent(self, event):
-        if self.press_s and self.press_e:
-            area = QRect(self.press_s, self.press_e)
-            self.press = False
-            self.press_s = None
-            self.press_e = None
-            self.update()
-            self.selects = []
-            alltag = self.findChildren(Newlable)
-            for tag in alltag:
-                if area.contains(tag.x() + 75, tag.y() + 30):
-                    self.selects.append(tag)
-                    tag.state = 'select'
-                    tag.setStyleSheet(tag.sheet[tag.state])
+        self.press = False
+        if self.press_s and hasattr(self,'press_e'):
+            if self.press_e:
+                area = QRect(self.press_s, self.press_e)
+                self.press = False
+                self.press_s = None
+                self.press_e = None
+                self.update()
+                self.selects = []
+                alltag = self.findChildren(Newlable)
+                for tag in alltag:
+                    if area.contains(tag.x() + 75, tag.y() + 30):
+                        self.selects.append(tag)
+                        tag.state = 'select'
+                        tag.setStyleSheet(tag.sheet[tag.state])
 
     def mouseMoveEvent(self, event):
         if self.press:
