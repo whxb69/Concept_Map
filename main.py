@@ -54,7 +54,6 @@ class Newlable(QLineEdit):
         self.opos = None
 
         self.window = self.parentWidget()
-        # TODO:画框和tag的edit冲突
         # TODO:修改时不能点光标
         # TODO:edit状态下无法托选
         # TODO:B框和select与edit的结合
@@ -318,14 +317,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         pen = QPainter(self)
         if not pen.isActive():
             pen.begin(self)
-        if hasattr(self, 'press_e'):
-            if self.press_s and self.press and self.press_e:
-                pen.setPen(QPen(Qt.black, 1, Qt.DashLine))
-                scene = QGraphicsScene()
-                scene.setSceneRect(0, 0, self.width(), self.height())
-                rect = QRectF(self.press_s, self.press_e)
-                pen.drawRect(rect)
-
+        
         if self.draw and hasattr(self, 'lines'):
             for s in self.lines:
                 for l in self.lines[s]:
@@ -337,6 +329,20 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
                     pen.drawLine(line)
                     self.drawarrow(pen, line, ss, ee)
+
+        if hasattr(self, 'press_e'):
+            if self.press_s and self.press and self.press_e:
+                alltag = self.findChildren(Newlable)
+                for index,tag in enumerate(alltag):
+                    area = QRect(QPoint(tag.x(),tag.y()),
+                                QPoint(tag.x()+tag.width(),tag.y()+tag.height()))
+                    if area.contains(self.press_s):
+                        return None
+                pen.setPen(QPen(Qt.black, 1, Qt.DashLine))
+                scene = QGraphicsScene()
+                scene.setSceneRect(0, 0, self.width(), self.height())
+                rect = QRectF(self.press_s, self.press_e)
+                pen.drawRect(rect)
 
     def drawarrow(self, pen, line, s, e):
         v = line.unitVector()
@@ -452,7 +458,6 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if self.press:
             self.press_e = event.pos()
             self.update()
-
         else:
             x = event.x()
             y = event.y()
