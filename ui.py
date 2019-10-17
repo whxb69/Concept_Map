@@ -15,8 +15,8 @@ class Ui_MainWindow(object):
         MainWindow.setObjectName("MainWindow")
         MainWindow.setWindowIcon(QtGui.QIcon(r'src\concept.png'))
         desktop = QtWidgets.QApplication.desktop()
-        self.screenWidth = desktop.width() * 0.5
-        self.screenHeight = desktop.height() * 0.7
+        self.screenWidth = desktop.width() * 0.7
+        self.screenHeight = desktop.height() * 0.6
         MainWindow.resize(self.screenWidth , self.screenHeight)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -46,11 +46,14 @@ class Ui_MainWindow(object):
         self.action_copy.setObjectName("actionsave")
         self.action_copy.setToolTip('另存为文件')
 
-        file = self.menubar.addMenu('文件')
-        file.addAction(self.action_new)
-        file.addAction(self.action_open)
-        file.addAction(self.action_save)
-        file.addAction(self.action_copy)
+        m_file = self.menubar.addMenu('文件')
+        m_file.addAction(self.action_new)
+        m_file.addAction(self.action_open)
+        m_file.addAction(self.action_save)
+        m_file.addAction(self.action_copy)
+
+        m_edit = self.menubar.addMenu('编辑')
+        
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
