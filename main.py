@@ -25,10 +25,11 @@ class Newlable(QLineEdit):
                               "border-radius: 15px;background-color:rgb(240,240,240)",
                       'edit': "border-width:2px;border-style: solid; "
                               "border-radius: 15px;border-color: rgb(150, 100, 0);",
+                    'Bedit': "border: 1px solid red,4px solid black",
                       'in': "border-width:1.5px;border-style: dashed; "
                             "border-radius: 15px;border-color: rgb(0, 0, 0);"
                             "background-color:rgb(240,240,240)",
-                      'B': "border-width:5px;border-style: solid; "
+                      'B': "border-width:3px;border-style: solid; "
                            "border-radius: 15px;border-color: rgb(0, 0, 0);"
                            "background-color:rgb(240,240,240)",
                       'select': "border-width:3px;border-style: solid; "
@@ -42,7 +43,6 @@ class Newlable(QLineEdit):
         self.setStyleSheet(self.sheet['edit'])
         # self.setAcceptDrops(True)
         # self.setDragEnabled(True)
-        self.setReadOnly(False)
         self.setAlignment(Qt.AlignCenter)
         self.mm = False  # move mode
         self.press = False
@@ -55,7 +55,6 @@ class Newlable(QLineEdit):
         self.window = self.parentWidget()
         # TODO:B框和select与edit的结合
         # TODO:选框优化 平行移动
-        # TODO:检查tag删除
 
     def widthchange(self):
         length = self.fontMetrics().width(self.text())
@@ -67,25 +66,27 @@ class Newlable(QLineEdit):
             pass
     
     def stateChangeEvent(self, state):
-        # print(state)
         if not state:
+            self.setFocusPolicy(Qt.NoFocus)
             self.setSelection(0,0)
-            self.setFocusPolicy(Qt.NoFocus) 
             self.setStyleSheet(self.sheet['None'])
             self.setReadOnly(True)
         elif state == 'in':
-            self.setFocusPolicy(Qt.NoFocus) 
+            self.setFocusPolicy(Qt.NoFocus)
             self.setStyleSheet(self.sheet[state])
             self.setReadOnly(True)
         elif state == 'select':
-            self.setFocusPolicy(Qt.NoFocus) 
+            self.setFocusPolicy(Qt.NoFocus)
             self.setStyleSheet(self.sheet[state])
-            self.setReadOnly(True)
         elif state == 'edit':
-            self.setFocusPolicy(Qt.StrongFocus) 
-            self.setStyleSheet(self.sheet[state])
+            self.setFocusPolicy(Qt.StrongFocus)
+            self.setSelection(len(self.text()),len(self.text()))
+            if self.Bstate:
+                self.setStyleSheet(self.sheet['Bedit'])
+            else:
+                self.setStyleSheet(self.sheet[state])
             self.setReadOnly(False)
-            self.setSelection(0,len(self.text()))
+            self.setSelection(len(self.text()),len(self.text()))
         elif state == 'crash':
             self.setStyleSheet(self.sheet[state])
             self.setReadOnly(True)
@@ -101,26 +102,17 @@ class Newlable(QLineEdit):
         menu = QMenu(self)
         reset = menu.addAction("&还原")
         Bcase = menu.addAction("&Bcase")
+        Del = menu.addAction('&删除')
         Bcase.triggered.connect(self.B_fun)
         reset.triggered.connect(self.B_fun)
+        Del.triggered.connect(self.deltag)
         menu.exec_(event.globalPos())
 
-    def keyReleaseEvent(self, event):
-        #tag删除
-        if event.key() == Qt.Key_Delete:
-            if self.state == 'select':
-                name = self.objectName()
-                if name in self.window.lines:
-                    self.window.lines.pop(name)
-                for k in self.window.lines:
-                    if name in self.window.lines[k]:
-                        self.window.lines[k].remove(name)
-                #更新连线
-                self.window.update()
-                #删除节点
-                self.deltag()
-        else:
-            self.window.keyPressEvent(event)
+    # def keyPressEvent(self, event):
+    #     #tag删除
+        
+    #     else:
+    #         self.window.keyReleaseEvent(event)
 
     def mousePressEvent(self, event):
         if self.state == 'edit':
@@ -138,6 +130,8 @@ class Newlable(QLineEdit):
         if self.state == 'edit':
             super().mouseMoveEvent(event)
         if self.press and self.state != 'edit':
+            if self.window.selects:
+                self.window.mouseMoveEvent(event)
             self.mm = True
             if not hasattr(self, 'temp'):
                 # 触发位移时定义占位tag
@@ -267,6 +261,7 @@ class Newlable(QLineEdit):
                     keys.append(key)
         [self.window.arrows.pop(key) for key in keys]
         self.deleteLater()
+        self.window.update()
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -425,10 +420,27 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.lines[s.objectName()].append(e.objectName())
         self.update()
 
+    def keyPressEvent(self, event):
+        alltag = self.findChildren(QLineEdit)
+        if event.key() == Qt.Key_Delete:
+            for tag in alltag:
+                if tag.state == 'select':
+                    name = tag.objectName()
+                    if name in self.lines:
+                        self.lines.pop(name)
+                    for k in self.lines:
+                        if name in self.lines[k]:
+                            self.lines[k].remove(name)
+                    #更新连线
+                    self.update()
+                    #删除节点
+                    tag.deltag()
+
     def mousePressEvent(self, event):
         # 标记按下和坐标
         self.press = True
         self.press_s = event.pos()
+        self.selects = []
 
         alltag = self.findChildren(QLineEdit)
         for tag in alltag:
@@ -492,12 +504,30 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                         tag.state = 'select'
                         tag.stateChanged.emit(tag.state)
         
-        
-            
-            # tag.setDragEnabled(False)
-            # tag.setReadOnly(True)
 
     def mouseMoveEvent(self, event):
+        if self.selects:
+            wx = self.window.x()
+            wy = self.window.y()
+            for tag in self.selects:
+                if not hasattr(tag, 'temp'):
+            # 触发位移时定义占位tag
+                    tag.temp = tag.window.inittag(tag.x() + tagw/2, tag.y() + tagh)
+                    tag.temp.setObjectName(tag.objectName())
+                    tag.temp.setText(tag.text())
+                    tag.temp.setReadOnly(True)
+                    tag.temp.setAcceptDrops(False)
+                    if tag.Bstate:
+                        tag.temp.setStyleSheet(tag.sheet['B'])
+                        tag.temp.Bstate = True
+                    else:
+                        tag.temp.setStyleSheet('None')
+                    tag.setObjectName('temp')
+                    tag.state = None
+                    tag.stateChanged.emit(tag.state)
+                    x = event.x()
+                    y = event.y()
+                    tag.move(x - wx - tagw/2+tag.x(), y - wy - tagh*3/2+tag.y())
         if self.press:
             self.press_e = event.pos()
             self.update()
@@ -587,6 +617,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         w = ET.ElementTree(root)
 
         w.write(FileName, 'utf-8', xml_declaration=True)
+        self.setWindowTitle('Concept map - '+os.path.basename(FileName))
         return FileName
 
     def openfile(self):
@@ -686,6 +717,7 @@ class Dlabel(QLabel):
     def dropEvent(self, event):
         text = event.mimeData().text()
         texts = text.split('\n')
+        #tag生成
         if self.objectName() == 'tag':
             for index, tag in enumerate(texts):
                 new = self.window.inittag(0, 0)
@@ -695,6 +727,7 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
+        #rel生成
         else:
             for index, tag in enumerate(texts):
                 new = self.window.inittag(0, 0)
