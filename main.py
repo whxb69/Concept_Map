@@ -83,7 +83,8 @@ class Newlabel(QLineEdit):
             self.state = state
             self.setFocusPolicy(Qt.NoFocus)
             self.setStyleSheet(self.sheet[state])
-            self.window.selects.append(self)
+            if self not in self.window.selects:
+                self.window.selects.append(self)
         elif state == 'edit':
             self.state = state
             self.setFocusPolicy(Qt.StrongFocus)
@@ -237,7 +238,7 @@ class Newlabel(QLineEdit):
 
     # def dropEvent(self, event):
     #     pass
-    #     #TODO: 当前drop待优化 和共同优化
+    #     #TODO: 当前drop待优化 和press共同优化
 
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
@@ -763,8 +764,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if self.selects:
             for tag in self.selects:
                 self.copys.append(tag)
-                # self.copysx.append(tag.x())
-                # self.copysy.append(tag.y())
+                self.copysx.append(tag.x())
+                self.copysy.append(tag.y())
 
             if self.cuts:
                 self.cuts = []
@@ -772,6 +773,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.cutsy = []
 
     def pasteTag(self):
+        #剪切到粘贴
         if self.cuts:
             xs = sum(self.cutsx) / len(self.cutsx)
             offsetx = xs - self.width() / 2
@@ -789,27 +791,24 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             self.cutsx = []
             self.cutsy = []
 
-
+        #复制到粘贴
         if self.copys:
-            self.copys = list(set(self.copys))
-            for copy in self.copys:
-                self.copysx.append(copy.x())
-                self.copysy.append(copy.y())
-
+            #计算坐标偏移
             xs = sum(self.copysx) / len(self.copysx)
             offsetx = xs - self.width() / 2
             ys = sum(self.copysy) / len(self.copysy)
             offsety = ys - self.height() / 2
 
-            news = []
+            news = []#存储新tag
+            #复制tag
             for index, tag in enumerate(self.copys):
                 new = self.inittag(self.copysx[index] + offsetx, self.copysy[index] + offsety)
                 new.__dict__ = tag.__dict__
                 new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
                 news.append(new)
-                # new.show()
 
-            for tag,new in zip(self.copys,news):
+            #复制连线信息
+            for tag, new in zip(self.copys, news):
                 if tag.objectName() in self.lines:
                     self.lines[new.objectName()] = []
                     for tag_e in self.lines[tag.objectName()]:
@@ -851,6 +850,7 @@ class Dlabel(QLabel):
         # tag生成
         if self.objectName() == 'tag':
             for index, tag in enumerate(texts):
+                #TODO: 调整新tag坐标
                 new = self.window.inittag(0, 0)
                 new.move(self.width() + 20, self.y() + (index + 1) * 80)
                 new.setStyleSheet(new.sheet['B'])
