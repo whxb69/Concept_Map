@@ -305,6 +305,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.copysx = []
         self.copysy = []
 
+        self.lines_temp = {}
+
         # 文件菜单
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
         self.action_saveas.triggered.connect(self.saveasfile)
@@ -743,9 +745,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if self.selects:
             for tag in self.selects:
                 tag.hide()
+                if tag.objectName() in self.lines:
+                    self.lines_temp[tag.objectName()] = self.lines[tag.objectName()]
+                    self.lines.pop(tag.objectName())
+
                 self.cuts.append(tag)
                 self.cutsx.append(tag.x())
                 self.cutsy.append(tag.y())
+            self.update()
 
             if self.copys:
                 self.copys = []
@@ -756,8 +763,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if self.selects:
             for tag in self.selects:
                 self.copys.append(tag)
-                self.copysx.append(tag.x())
-                self.copysy.append(tag.y())
+                # self.copysx.append(tag.x())
+                # self.copysy.append(tag.y())
 
             if self.cuts:
                 self.cuts = []
@@ -772,26 +779,46 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             offsety = ys - self.height() / 2
             for index, tag in enumerate(self.cuts):
                 tag.move(self.cutsx[index] - offsetx, self.cutsy[index] - offsety)
+                if tag.objectName() in self.lines_temp:
+                    self.lines[tag.objectName()] = self.lines_temp[tag.objectName()]
+                    self.lines_temp.pop(tag.objectName())
                 tag.show()
+            self.update()
 
             self.cuts = []
             self.cutsx = []
             self.cutsy = []
 
+
         if self.copys:
+            self.copys = list(set(self.copys))
+            for copy in self.copys:
+                self.copysx.append(copy.x())
+                self.copysy.append(copy.y())
+
             xs = sum(self.copysx) / len(self.copysx)
             offsetx = xs - self.width() / 2
             ys = sum(self.copysy) / len(self.copysy)
             offsety = ys - self.height() / 2
+
+            news = []
             for index, tag in enumerate(self.copys):
                 new = self.inittag(self.copysx[index] + offsetx, self.copysy[index] + offsety)
                 new.__dict__ = tag.__dict__
                 new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
-                new.show()
+                news.append(new)
+                # new.show()
 
-            self.copys = []
-            self.copysx = []
-            self.copysy = []
+            for tag,new in zip(self.copys,news):
+                if tag.objectName() in self.lines:
+                    self.lines[new.objectName()] = []
+                    for tag_e in self.lines[tag.objectName()]:
+                        tag_o = self.findChild(QLineEdit, tag_e)
+                        if tag_o in self.copys:
+                            tag_n = news[self.copys.index(tag_o)]
+                            self.lines[new.objectName()].append(tag_n.objectName())
+                new.show()
+            self.update()
 
     def deleteTag(self):
         if self.selects:
