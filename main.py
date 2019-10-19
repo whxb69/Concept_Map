@@ -1,4 +1,5 @@
 from ui import *
+from findui import *
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -10,9 +11,10 @@ import time
 import os
 import PyQt5.sip
 
+
 # cgitb.enable()
 
-class Newlable(QLineEdit):
+class Newlabel(QLineEdit):
     stateChanged = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -25,7 +27,7 @@ class Newlable(QLineEdit):
                               "border-radius: 15px;background-color:rgb(240,240,240)",
                       'edit': "border-width:2px;border-style: solid; "
                               "border-radius: 15px;border-color: rgb(150, 100, 0);",
-                    'Bedit': "border: 1px solid red,4px solid black",
+                      'Bedit': "border: 1px solid red,4px solid black",
                       'in': "border-width:1.5px;border-style: dashed; "
                             "border-radius: 15px;border-color: rgb(0, 0, 0);"
                             "background-color:rgb(240,240,240)",
@@ -59,43 +61,49 @@ class Newlable(QLineEdit):
     def widthchange(self):
         length = self.fontMetrics().width(self.text())
         if self.text():
-            s_size = length/len(self.text())
+            s_size = length / len(self.text())
         try:
-            self.resize(length+2*s_size,self.height())
+            self.resize(length + 2 * s_size, self.height())
         except:
             pass
-    
+
     def stateChangeEvent(self, state):
         if not state:
+            self.state = state
             self.setFocusPolicy(Qt.NoFocus)
-            self.setSelection(0,0)
+            self.setSelection(0, 0)
             self.setStyleSheet(self.sheet['None'])
             self.setReadOnly(True)
         elif state == 'in':
+            self.state = state
             self.setFocusPolicy(Qt.NoFocus)
             self.setStyleSheet(self.sheet[state])
             self.setReadOnly(True)
         elif state == 'select':
+            self.state = state
             self.setFocusPolicy(Qt.NoFocus)
             self.setStyleSheet(self.sheet[state])
+            self.window.selects.append(self)
         elif state == 'edit':
+            self.state = state
             self.setFocusPolicy(Qt.StrongFocus)
-            self.setSelection(len(self.text()),len(self.text()))
+            self.setSelection(len(self.text()), len(self.text()))
             if self.Bstate:
                 self.setStyleSheet(self.sheet['Bedit'])
             else:
                 self.setStyleSheet(self.sheet[state])
             self.setReadOnly(False)
-            self.setSelection(len(self.text()),len(self.text()))
+            self.setSelection(len(self.text()), len(self.text()))
         elif state == 'crash':
+            self.state = state
             self.setStyleSheet(self.sheet[state])
             self.setReadOnly(True)
-        
+
         if self.Bstate:
             self.setStyleSheet(self.sheet['B'])
 
     def changeEvnet(self, evnet):
-        #需要保存信号
+        # 需要保存信号
         self.window.changed = True
 
     def contextMenuEvent(self, event):
@@ -110,7 +118,7 @@ class Newlable(QLineEdit):
 
     # def keyPressEvent(self, event):
     #     #tag删除
-        
+
     #     else:
     #         self.window.keyReleaseEvent(event)
 
@@ -135,7 +143,7 @@ class Newlable(QLineEdit):
             self.mm = True
             if not hasattr(self, 'temp'):
                 # 触发位移时定义占位tag
-                self.temp = self.window.inittag(self.x() + tagw/2, self.y() + tagh)
+                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
                 self.temp.setReadOnly(True)
@@ -153,15 +161,15 @@ class Newlable(QLineEdit):
             wy = self.window.y()
             x = event.globalX()
             y = event.globalY()
-            self.move(x - wx - tagw/2, y - wy - tagh*3/2)
+            self.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
 
-            alltag = self.window.findChildren(QLineEdit)
+            alltag = self.window.findChildren(Newlabel)
             for tag in alltag:
                 tx = tag.x()
                 ty = tag.y()
-                rect = QRect(QPoint(tx,ty),QPoint(tx+2*tag.width(),ty+2*tag.height()))
-                point = QPoint(event.globalX()-self.window.x(),
-                event.globalY()-self.window.y()-tag.height()/2)
+                rect = QRect(QPoint(tx, ty), QPoint(tx + 2 * tag.width(), ty + 2 * tag.height()))
+                point = QPoint(event.globalX() - self.window.x(),
+                               event.globalY() - self.window.y() - tag.height() / 2)
                 if rect.contains(point):
                     if tag not in [self.temp, self]:
                         if tag.Bstate:
@@ -192,16 +200,16 @@ class Newlable(QLineEdit):
             self.state = 'edit'
             self.stateChanged.emit(self.state)
         elif self.state == 'in':
-            alltag = self.window.findChildren(QLineEdit)
+            alltag = self.window.findChildren(Newlabel)
             for tag in alltag:
-                if tag.state in ['select', 'edit'] and tag!= self:
+                if tag.state in ['select', 'edit'] and tag != self:
                     tag.state = None
                     tag.stateChanged.emit(None)
                     break
             self.state = 'select'
-            self.stateChanged.emit(self.state)            
+            self.stateChanged.emit(self.state)
 
-        #release结束移动
+            # release结束移动
         if self.mm:
             self.draw = True
             wx = self.window.x()
@@ -209,15 +217,15 @@ class Newlable(QLineEdit):
             x = event.globalX()
             y = event.globalY()
             if self.tgt:
-                #连接后画线
+                # 连接后画线
                 self.window.drawline_pt(self.temp, self.tgt)
                 if self.tgt.Bstate:
                     self.tgt.setStyleSheet(self.temp.sheet['B'])
                 else:
                     self.tgt.setStyleSheet(self.tgt.sheet['None'])
             else:
-                #非连接 移动tag
-                self.temp.move(x - wx - tagw/2, y - wy - tagh*3/2)
+                # 非连接 移动tag
+                self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
                 self.tgt = None
                 self.mm = False
             self.temp.state = None
@@ -263,6 +271,7 @@ class Newlable(QLineEdit):
         self.deleteLater()
         self.window.update()
 
+
 class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(Mainwindow, self).__init__(parent)
@@ -286,16 +295,36 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.press_s = None
         self.selects = []
 
+        # 记录剪切数据
+        self.cuts = []
+        self.cutsx = []
+        self.cutsy = []
+
+        # 记录复制信息
+        self.copys = []
+        self.copysx = []
+        self.copysy = []
+
+        # 文件菜单
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
-        self.action_copy.triggered.connect(self.saveasfile)
+        self.action_saveas.triggered.connect(self.saveasfile)
         self.action_open.triggered.connect(self.openfile)
         self.action_new.triggered.connect(self.newfile)
 
+        # 编辑菜单
+        self.action_cut.triggered.connect(self.cutTag)
+        self.action_copy.triggered.connect(self.copyTag)
+        self.action_paste.triggered.connect(self.pasteTag)
+        self.action_delete.triggered.connect(self.deleteTag)
+        self.action_find.triggered.connect(self.findAndReplace)
+
+        # tag拖动框
         self.label_tag = Dlabel(self)
         self.label_tag.setObjectName('tag')
         self.label_tag.setGeometry(
             QtCore.QRect(0, 0.25 * self.screenHeight, 20, 0.5 * self.screenHeight))
 
+        # rel拖动框
         self.label_rel = Dlabel(self)
         self.label_rel.setObjectName('rel')
         self.label_rel.setGeometry(
@@ -340,15 +369,15 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         pen = QPainter(self)
         if not pen.isActive():
             pen.begin(self)
-        
+
         if self.draw and hasattr(self, 'lines'):
             for s in self.lines:
                 for l in self.lines[s]:
                     ss = self.window.findChild(QLineEdit, s)
                     ee = self.window.findChild(QLineEdit, l)
                     if ss and ee:
-                        line = QLineF(ss.x() + ss.width()/2, ss.y() + ss.height()/2, 
-                        ee.x() + ee.width()/2, ee.y() + ee.height()/2)
+                        line = QLineF(ss.x() + ss.width() / 2, ss.y() + ss.height() / 2,
+                                      ee.x() + ee.width() / 2, ee.y() + ee.height() / 2)
                         line.setLength(line.length())
                         pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
                         pen.drawLine(line)
@@ -356,10 +385,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         if hasattr(self, 'press_e'):
             if self.press_s and self.press and self.press_e:
-                alltag = self.findChildren(Newlable)
-                for index,tag in enumerate(alltag):
-                    area = QRect(QPoint(tag.x(),tag.y()),
-                                QPoint(tag.x()+tag.width(),tag.y()+tag.height()))
+                alltag = self.findChildren(Newlabel)
+                for index, tag in enumerate(alltag):
+                    area = QRect(QPoint(tag.x(), tag.y()),
+                                 QPoint(tag.x() + tag.width(), tag.y() + tag.height()))
                     if area.contains(self.press_s):
                         return None
                 pen.setPen(QPen(Qt.black, 1, Qt.DashLine))
@@ -421,7 +450,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.update()
 
     def keyPressEvent(self, event):
-        alltag = self.findChildren(QLineEdit)
+        alltag = self.findChildren(Newlabel)
         if event.key() == Qt.Key_Delete:
             for tag in alltag:
                 if tag.state == 'select':
@@ -431,9 +460,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     for k in self.lines:
                         if name in self.lines[k]:
                             self.lines[k].remove(name)
-                    #更新连线
+                    # 更新连线
                     self.update()
-                    #删除节点
+                    # 删除节点
                     tag.deltag()
 
     def mousePressEvent(self, event):
@@ -442,7 +471,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.press_s = event.pos()
         self.selects = []
 
-        alltag = self.findChildren(QLineEdit)
+        alltag = self.findChildren(Newlabel)
         for tag in alltag:
             # 删除无内容tag
             if not tag.text():
@@ -452,8 +481,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     tag.setReadOnly(True)
                     tag.setAcceptDrops(False)
                     if tag.state == 'edit':
-                        if tag.x() < event.globalX()-self.x() and event.globalX()-self.x() < tag.x() + tagw \
-                                and tag.y() < event.globalY()-self.y() and event.globalY()-self.y() < tag.y() + tagw/2:
+                        if tag.x() < event.globalX() - self.x() and event.globalX() - self.x() < tag.x() + tagw \
+                                and tag.y() < event.globalY() - self.y() and event.globalY() - self.y() < tag.y() + tagw / 2:
                             return None
                         else:
                             tag.state = None
@@ -479,9 +508,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def mouseReleaseEvent(self, event):
         self.press = False
-        alltag = self.findChildren(Newlable)
+        alltag = self.findChildren(Newlabel)
 
-        #检查并更新各tag状态
+        # 检查并更新各tag状态
         for tag in alltag:
             if not tag.text():
                 tag.deltag()
@@ -489,8 +518,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             tag.state = None
             tag.stateChanged.emit(None)
 
-        #选中框选范围内tag
-        if self.press_s and hasattr(self,'press_e'):
+        # 选中框选范围内tag
+        if self.press_s and hasattr(self, 'press_e'):
             if self.press_e:
                 area = QRect(self.press_s, self.press_e)
                 self.press = False
@@ -499,40 +528,40 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.update()
                 self.selects = []
                 for tag in alltag:
-                    if area.contains(tag.x() + tagw/2, tag.y() + tagh/2):
+                    if area.contains(tag.x() + tagw / 2, tag.y() + tagh / 2):
                         self.selects.append(tag)
                         tag.state = 'select'
                         tag.stateChanged.emit(tag.state)
-        
 
     def mouseMoveEvent(self, event):
-        if self.selects:
-            wx = self.window.x()
-            wy = self.window.y()
-            for tag in self.selects:
-                if not hasattr(tag, 'temp'):
-            # 触发位移时定义占位tag
-                    tag.temp = tag.window.inittag(tag.x() + tagw/2, tag.y() + tagh)
-                    tag.temp.setObjectName(tag.objectName())
-                    tag.temp.setText(tag.text())
-                    tag.temp.setReadOnly(True)
-                    tag.temp.setAcceptDrops(False)
-                    if tag.Bstate:
-                        tag.temp.setStyleSheet(tag.sheet['B'])
-                        tag.temp.Bstate = True
-                    else:
-                        tag.temp.setStyleSheet('None')
-                    tag.setObjectName('temp')
-                    tag.state = None
-                    tag.stateChanged.emit(tag.state)
-                    x = event.x()
-                    y = event.y()
-                    tag.move(x - wx - tagw/2+tag.x(), y - wy - tagh*3/2+tag.y())
+        # TODO: 群体拖动
+        # if self.selects:
+        #     wx = self.window.x()
+        #     wy = self.window.y()
+        #     for tag in self.selects:
+        #         if not hasattr(tag, 'temp'):
+        #             # 触发位移时定义占位tag
+        #             tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh)
+        #             tag.temp.setObjectName(tag.objectName())
+        #             tag.temp.setText(tag.text())
+        #             tag.temp.setReadOnly(True)
+        #             tag.temp.setAcceptDrops(False)
+        #             if tag.Bstate:
+        #                 tag.temp.setStyleSheet(tag.sheet['B'])
+        #                 tag.temp.Bstate = True
+        #             else:
+        #                 tag.temp.setStyleSheet('None')
+        #             tag.setObjectName('temp')
+        #             tag.state = None
+        #             tag.stateChanged.emit(tag.state)
+        #             x = event.x()
+        #             y = event.y()
+        #             tag.move(x - wx - tagw / 2 + tag.x(), y - wy - tagh * 3 / 2 + tag.y())
         if self.press:
             self.press_e = event.pos()
             self.update()
         else:
-            #识别箭头
+            # 识别箭头
             self.press_s = None
             x = event.x()
             y = event.y()
@@ -558,10 +587,20 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.inittag(x - wx, y - wy)
 
     def inittag(self, x, y):
+        target = QPoint(x, y)
+        alltag = self.findChildren(Newlabel)
+        for tag in alltag:
+            area = QRect(QPoint(tag.x(), tag.y()),
+                         QPoint(tag.x() + tag.width(), tag.y() + tag.height()))
+            if area.contains(target):
+                x += 50
+                y += 50
+                break
+
         self.changed = True
         name = 'tag' + str(self.num)
-        exec('self.%s = Newlable(self)' % name)
-        exec('self.%s.setGeometry(x - %d, y - %d, %d, %d)' % (name,tagw/2,tagh*3/2,tagw,tagh))
+        exec('self.%s = Newlabel(self)' % name)
+        exec('self.%s.setGeometry(x - %d, y - %d, %d, %d)' % (name, tagw / 2, tagh * 3 / 2, tagw, tagh))
         exec('self.%s.show()' % name)
         exec('self.%s.setObjectName("%s")' % (name, name))
         self.nodes[self.num] = {}
@@ -585,7 +624,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             FileName = filename
 
         self.nodes = {}
-        alltag = self.findChildren(QLineEdit)
+        alltag = self.findChildren(Newlabel)
 
         # 提取信息
         for index, tag in enumerate(alltag):
@@ -617,11 +656,11 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         w = ET.ElementTree(root)
 
         w.write(FileName, 'utf-8', xml_declaration=True)
-        self.setWindowTitle('Concept map - '+os.path.basename(FileName))
+        self.setWindowTitle('Concept map - ' + os.path.basename(FileName))
         return FileName
 
     def openfile(self):
-        alltag = self.window.findChildren(QLineEdit)
+        alltag = self.window.findChildren(Newlabel)
         if len(alltag) == 0:  # 当前无标签 在原窗口打开
             new = self
         else:  # 当前有标签 新建窗口
@@ -647,7 +686,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         for node in nodes:
             info = node.attrib
             x, y = info['Position'].split(',')
-            tag = new.inittag(int(float(x)) + tagw/2, int(float(y)) + (tagh*3/2))  # 适应正常初始化，添加偏移量
+            tag = new.inittag(int(float(x)) + tagw / 2, int(float(y)) + (tagh * 3 / 2))  # 适应正常初始化，添加偏移量
 
             nid = info['ID']
             if 'tag' not in nid:
@@ -700,6 +739,71 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
 
+    def cutTag(self):
+        if self.selects:
+            for tag in self.selects:
+                tag.hide()
+                self.cuts.append(tag)
+                self.cutsx.append(tag.x())
+                self.cutsy.append(tag.y())
+
+            if self.copys:
+                self.copys = []
+                self.copysx = []
+                self.copysy = []
+
+    def copyTag(self):
+        if self.selects:
+            for tag in self.selects:
+                self.copys.append(tag)
+                self.copysx.append(tag.x())
+                self.copysy.append(tag.y())
+
+            if self.cuts:
+                self.cuts = []
+                self.cutsx = []
+                self.cutsy = []
+
+    def pasteTag(self):
+        if self.cuts:
+            xs = sum(self.cutsx) / len(self.cutsx)
+            offsetx = xs - self.width() / 2
+            ys = sum(self.cutsy) / len(self.cutsy)
+            offsety = ys - self.height() / 2
+            for index, tag in enumerate(self.cuts):
+                tag.move(self.cutsx[index] - offsetx, self.cutsy[index] - offsety)
+                tag.show()
+
+            self.cuts = []
+            self.cutsx = []
+            self.cutsy = []
+
+        if self.copys:
+            xs = sum(self.copysx) / len(self.copysx)
+            offsetx = xs - self.width() / 2
+            ys = sum(self.copysy) / len(self.copysy)
+            offsety = ys - self.height() / 2
+            for index, tag in enumerate(self.copys):
+                new = self.inittag(self.copysx[index] + offsetx, self.copysy[index] + offsety)
+                new.__dict__ = tag.__dict__
+                new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
+                new.show()
+
+            self.copys = []
+            self.copysx = []
+            self.copysy = []
+
+    def deleteTag(self):
+        if self.selects:
+            for tag in self.selects:
+                tag.deltag()
+
+    def findAndReplace(self):
+        findDia = Find_D(self)
+        findDia.exec_()
+
+        alltag = self.window.findChildren(Newlabel)
+
 
 class Dlabel(QLabel):
     def __init__(self, parent=None):
@@ -717,7 +821,7 @@ class Dlabel(QLabel):
     def dropEvent(self, event):
         text = event.mimeData().text()
         texts = text.split('\n')
-        #tag生成
+        # tag生成
         if self.objectName() == 'tag':
             for index, tag in enumerate(texts):
                 new = self.window.inittag(0, 0)
@@ -727,7 +831,7 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
-        #rel生成
+        # rel生成
         else:
             for index, tag in enumerate(texts):
                 new = self.window.inittag(0, 0)
@@ -753,10 +857,94 @@ class Dlabel(QLabel):
         event.accept()
 
 
+class Find_D(QDialog, Find_Form):
+    def __init__(self, parent=None):
+        super(Find_D, self).__init__(parent)
+        self.setupUi()
+        self.window = self.parentWidget()
+        self.get_all.setChecked(True)
+        self.btn_next.clicked.connect(lambda: self.find(mode='N'))
+        self.btn_prev.clicked.connect(lambda: self.find(mode='P'))
+        self.btn_reall.clicked.connect(lambda: self.replace(all=True))
+        self.btn_replace.clicked.connect(lambda: self.replace())
+
+        self.cur_find = -1
+
+    def find(self, mode):
+        alltag = self.window.findChildren(Newlabel)
+        if self.get_sel.isChecked():
+            tags = self.window.selects
+        else:
+            tags = alltag
+        tgt = self.line_find.text()
+        allres = []
+        for tag in tags:
+            if tgt in tag.text():
+                res = tag.text().find(tgt)
+                while res != -1:
+                    allres.append([tag, res])
+                    res = tag.text().find(tgt, res + 1)
+
+        # 定位目标tag和index
+        def setres():
+            if allres:
+                tag, index = allres[self.cur_find]
+                for t in alltag:
+                    t.stateChanged.emit(None)
+                tag.stateChanged.emit('edit')
+                tag.setSelection(index, len(tgt))
+
+        # 更改当前查找索引索引
+        if mode == 'N':
+            self.cur_find += 1
+            if self.cur_find > len(allres) - 1:
+                self.cur_find = 0
+            setres()
+
+        else:
+            self.cur_find -= 1
+            if self.cur_find < 0:
+                self.cur_find = len(allres) - 1
+            setres()
+
+    def replace(self, all=False):
+        alltag = self.window.findChildren(Newlabel)
+        if self.get_sel.isChecked():
+            tags = self.window.selects
+        else:
+            tags = alltag
+
+        # 获取替换源和目标
+        ori = self.line_find.text()
+        tgt = self.line_find_2.text()
+
+        cur_rpc = []
+        if all:
+            for tag in tags:
+                if ori in tag.text():
+                    new_t = tag.text().replace(ori, tgt, 1)
+                    tag.setText(new_t)
+        else:
+            for tag in alltag:
+                tag.stateChanged.emit(None)
+                if ori in tag.text():
+                    res = tag.text().find(ori)
+                    if not cur_rpc:
+                        cur_rpc.extend([tag, res])
+                    continue
+
+            if cur_rpc:
+                tag, index = cur_rpc
+                new_t = tag.text()[0:index] + tgt + tag.text()[index + 1:]
+                tag.setText(new_t)
+                tag.stateChanged.emit('edit')
+                tag.setSelection(index, len(tgt))
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    tagw = 180*math.sqrt(app.desktop().width()/3840)
-    tagh = 50*math.sqrt(app.desktop().height()/2160)
+    tagw = 180 * math.sqrt(app.desktop().width() / 3840)
+    tagh = 50 * math.sqrt(app.desktop().height() / 2160)
     win = Mainwindow()
     win.show()
     sys.exit(app.exec_())
