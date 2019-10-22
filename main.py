@@ -12,7 +12,7 @@ import os
 import PyQt5.sip
 
 
-# cgitb.enable()
+cgitb.enable()
 
 class Newlabel(QLineEdit):
     stateChanged = pyqtSignal(str)
@@ -52,6 +52,7 @@ class Newlabel(QLineEdit):
         self.draw = False
         self.Bstate = False
         self.setMinimumWidth(tagw)
+        # self.temp = None
         # self.opos = None
 
         self.window = self.parentWidget()
@@ -86,6 +87,8 @@ class Newlabel(QLineEdit):
             if self not in self.window.selects:
                 self.window.selects.append(self)
         elif state == 'edit':
+            if self in self.window.selects:
+                self.window.selects.remove(self)
             self.state = state
             self.setFocusPolicy(Qt.StrongFocus)
             self.setSelection(len(self.text()), len(self.text()))
@@ -135,16 +138,46 @@ class Newlabel(QLineEdit):
     #     if self.window.selects:
     #         pass
 
+    def moveEvent(self, event):
+        print(event.pos())
+        if not self.window.move_head:
+            for tag in self.window.selects:
+                if hasattr(tag,'temp'):
+                    self.window.move_head = tag
+        else:
+            if len(self.window.selects)>1 and self==self.window.move_head:
+                if not self.window.selects_dis:
+                    for tag in self.window.selects:
+                        self.window.selects_dis[tag]={'x':tag.x()-self.x(),'y':tag.y()-self.y()}
+                for tag in self.window.selects:
+                    if tag!= self:
+                        # 触发位移时定义占位tag
+                        if not hasattr(tag,'temp'):
+                            tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh*3/2)
+                            tag.temp.setObjectName(tag.objectName())
+                            tag.temp.setText(tag.text())
+                            tag.state = None
+                            tag.stateChanged.emit(tag.state)
+                            if tag.Bstate:
+                                tag.temp.setStyleSheet(tag.sheet['B'])
+                                tag.temp.Bstate = True
+                            else:
+                                tag.temp.setStyleSheet('None')
+                        tag.setObjectName('temp')
+                        tag.state = None
+                        tag.stateChanged.emit(tag.state)
+
+                        tag.move(self.x()+self.window.selects_dis[tag]['x'],
+                            self.y()+self.window.selects_dis[tag]['y'])
+        
     def mouseMoveEvent(self, event):
-        if self.state == 'edit':
+        if self.state == 'edit' and not self.window.selects:
             super().mouseMoveEvent(event)
         if self.press and self.state != 'edit':
-            if self.window.selects:
-                self.window.mouseMoveEvent(event)
             self.mm = True
             if not hasattr(self, 'temp'):
                 # 触发位移时定义占位tag
-                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh)
+                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh*3/2)
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
                 self.temp.setReadOnly(True)
@@ -226,15 +259,26 @@ class Newlabel(QLineEdit):
                     self.tgt.setStyleSheet(self.tgt.sheet['None'])
             else:
                 # 非连接 移动tag
-                self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
-                self.tgt = None
-                self.mm = False
-            self.temp.state = None
+                #TODO:改bug temp的问题
+                if len(self.window.selects)>1:
+                    for tag in self.window.selects:
+                            tag.temp.move(tag.x(), tag.y()) 
+                            tag.temp.stateChanged.emit(None)
+                            if tag.temp.Bstate:
+                                tag.temp.setStyleSheet(self.temp.sheet['B'])
+                            if tag != self:
+                                tag.deltag()
+                else:
+                    self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
+                    self.tgt = None
+                    self.mm = False
+
             self.temp.stateChanged.emit(None)
             if self.temp.Bstate:
                 self.temp.setStyleSheet(self.temp.sheet['B'])
             self.window.update()
             self.deltag()
+    
 
     # def dropEvent(self, event):
     #     pass
@@ -295,6 +339,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setAcceptDrops(True)
         self.press_s = None
         self.selects = []
+        self.selects_dis = {}
+        self.move_head = None
 
         # 记录剪切数据
         self.cuts = []
@@ -472,7 +518,11 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         # 标记按下和坐标
         self.press = True
         self.press_s = event.pos()
+
+        #重置移动数据
         self.selects = []
+        self.selects_dis = {}
+        self.move_head = None
 
         alltag = self.findChildren(Newlabel)
         for tag in alltag:
@@ -520,6 +570,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 continue
             tag.state = None
             tag.stateChanged.emit(None)
+            tag.setFocusPolicy(Qt.NoFocus)
 
         # 选中框选范围内tag
         if self.press_s and hasattr(self, 'press_e'):
@@ -538,28 +589,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def mouseMoveEvent(self, event):
         # TODO: 群体拖动
-        # if self.selects:
-        #     wx = self.window.x()
-        #     wy = self.window.y()
-        #     for tag in self.selects:
-        #         if not hasattr(tag, 'temp'):
-        #             # 触发位移时定义占位tag
-        #             tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh)
-        #             tag.temp.setObjectName(tag.objectName())
-        #             tag.temp.setText(tag.text())
-        #             tag.temp.setReadOnly(True)
-        #             tag.temp.setAcceptDrops(False)
-        #             if tag.Bstate:
-        #                 tag.temp.setStyleSheet(tag.sheet['B'])
-        #                 tag.temp.Bstate = True
-        #             else:
-        #                 tag.temp.setStyleSheet('None')
-        #             tag.setObjectName('temp')
-        #             tag.state = None
-        #             tag.stateChanged.emit(tag.state)
-        #             x = event.x()
-        #             y = event.y()
-        #             tag.move(x - wx - tagw / 2 + tag.x(), y - wy - tagh * 3 / 2 + tag.y())
+        
         if self.press:
             self.press_e = event.pos()
             self.update()
@@ -887,7 +917,7 @@ class Dlabel(QLabel):
 class Find_D(QDialog, Find_Form):
     def __init__(self, parent=None):
         super(Find_D, self).__init__(parent)
-        self.setupUi()
+        self.setupUi(app)
         self.window = self.parentWidget()
         self.get_all.setChecked(True)
         self.btn_next.clicked.connect(lambda: self.find(mode='N'))
