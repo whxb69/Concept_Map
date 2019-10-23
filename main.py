@@ -321,6 +321,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(Mainwindow, self).__init__(parent)
         self.setupUi(self)
+        # self.scroll = QScrollArea()
+        # self.scroll.setWidget(self)
+        self.setContextMenuPolicy(Qt.DefaultContextMenu)
         # self.lines = []
         self.setWindowTitle("Concept map")
         self.lines = {}
@@ -366,6 +369,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_paste.triggered.connect(self.pasteTag)
         self.action_delete.triggered.connect(self.deleteTag)
         self.action_find.triggered.connect(self.findAndReplace)
+        self.action_selectall.triggered.connect(self.selectAll)
 
         # tag拖动框
         self.label_tag = Dlabel(self)
@@ -386,6 +390,17 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.label_tag.move(0, 0.25 * self.height())
         self.label_rel.resize(20, 0.5 * self.height())
         self.label_rel.move(self.width() - 20, 0.25 * self.height())
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        new = menu.addAction('&新建')
+        delete = menu.addAction('&删除')
+        menu.addSeparator()
+        cut = menu.addAction('&剪切')
+        copy = menu.addAction('&复制')
+        paste = menu.addAction('&粘贴')
+        menu.exec_(event.globalPos())
+
 
     def closeEvent(self, event):
         # 画布有变动
@@ -859,6 +874,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         findDia.exec_()
 
         alltag = self.window.findChildren(Newlabel)
+
+    def selectAll(self):
+        alltag = self.window.findChildren(Newlabel)
+        for tag in alltag:
+            tag.stateChanged.emit('select')
+
+
 
 
 class Dlabel(QLabel):
