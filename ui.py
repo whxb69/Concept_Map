@@ -30,6 +30,14 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
+        self.logo = QLabel(self)
+        self.logo.setText('双击任意位置创建标签\n'
+                          '文本拖动到两侧生成标签\n'
+                          '将彼此相互接触创建连接')
+        self.logo.setAlignment(QtCore.Qt.AlignCenter)
+        self.logo.resize(self.screenWidth/5,self.screenHeight/8)
+        self.logo.move(self.screenWidth*0.4,self.screenHeight*7/16)
+
         self.action_new = QAction("&新建", MainWindow)
         self.action_new.setObjectName("actionnew")
         self.action_new.setToolTip('新建窗口')

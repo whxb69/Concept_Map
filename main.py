@@ -316,6 +316,12 @@ class Newlabel(QLineEdit):
         self.deleteLater()
         self.window.update()
 
+        alltag = self.window.findChildren(Newlabel)
+        if len(alltag)==1:
+            self.window.logo.move(self.window.width() * 0.4, self.window.height() * 7 / 16)
+            self.window.logo.show()
+
+
 
 class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
@@ -653,6 +659,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         exec('self.%s.setObjectName("%s")' % (name, name))
         self.nodes[self.num] = {}
         self.num += 1
+
+        alltag = self.window.findChildren(Newlabel)
+        if len(alltag) > 0:
+            self.window.logo.hide()
         return eval('self.%s' % name)
 
     # 另存为
