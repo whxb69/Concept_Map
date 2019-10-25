@@ -10,7 +10,7 @@ from xml.etree import ElementTree as ET
 import time
 import os
 import PyQt5.sip
-
+import sip
 
 cgitb.enable()
 
@@ -139,7 +139,6 @@ class Newlabel(QLineEdit):
     #         pass
 
     def moveEvent(self, event):
-        print(event.pos())
         if not self.window.move_head:
             for tag in self.window.selects:
                 if hasattr(tag,'temp'):
@@ -205,7 +204,9 @@ class Newlabel(QLineEdit):
                 point = QPoint(event.globalX() - self.window.x(),
                                event.globalY() - self.window.y() - tag.height() / 2)
                 if rect.contains(point):
-                    if tag not in [self.temp, self]:
+                    tgt_n = [self.temp, self]
+                    tgt_n.extend(self.window.selects)#不可做tgt集合
+                    if tag not in tgt_n:
                         if tag.Bstate:
                             tag.setStyleSheet(tag.sheet['Bcrash'])
                         else:
@@ -226,6 +227,7 @@ class Newlabel(QLineEdit):
             self.setReadOnly(False)
 
     def mouseReleaseEvent(self, event):
+        print(1)
         if self.state == 'edit':
             super().mouseReleaseEvent(event)
         self.press = False
@@ -262,12 +264,10 @@ class Newlabel(QLineEdit):
                 #TODO:改bug temp的问题
                 if len(self.window.selects)>1:
                     for tag in self.window.selects:
-                            tag.temp.move(tag.x(), tag.y()) 
-                            tag.temp.stateChanged.emit(None)
-                            if tag.temp.Bstate:
-                                tag.temp.setStyleSheet(self.temp.sheet['B'])
-                            if tag != self:
-                                tag.deltag()
+                        tag.temp.move(tag.x(), tag.y()) 
+                        tag.temp.stateChanged.emit(None)
+                        if tag.temp.Bstate:
+                            tag.temp.setStyleSheet(self.temp.sheet['B'])
                 else:
                     self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
                     self.tgt = None
@@ -276,14 +276,29 @@ class Newlabel(QLineEdit):
             self.temp.stateChanged.emit(None)
             if self.temp.Bstate:
                 self.temp.setStyleSheet(self.temp.sheet['B'])
-            self.window.update()
             self.deltag()
-    
+        #删除占位tag
+        tagToDel = self.window.findChildren(Newlabel,'temp')
+        if tagToDel:
+            for tag in tagToDel:
+                tag.deltag()
+        self.window.update()
+
+        alltag = self.window.findChildren(Newlabel)
+
+        # 检查并更新各tag状态
+        for tag in alltag:
+            if not tag.text():
+                tag.deltag()
+                continue
+            tag.state = None
+            tag.stateChanged.emit(None)
+            tag.setFocusPolicy(Qt.NoFocus)
+        
 
     # def dropEvent(self, event):
     #     pass
     #     #TODO: 当前drop待优化 和press共同优化
-
     def enterEvent(self, event):
         if self.state not in ['select', 'edit']:
             self.state = 'in'
@@ -314,6 +329,7 @@ class Newlabel(QLineEdit):
                     keys.append(key)
         [self.window.arrows.pop(key) for key in keys]
         self.deleteLater()
+        sip.delete(self)
         self.window.update()
 
         alltag = self.window.findChildren(Newlabel)
