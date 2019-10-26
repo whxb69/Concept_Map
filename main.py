@@ -60,6 +60,7 @@ class Newlabel(QLineEdit):
         # TODO:B框和select与edit的结合
 
     def widthchange(self):
+        # tag宽度自适应
         length = self.fontMetrics().width(self.text())
         if self.text():
             s_size = length / len(self.text())
@@ -72,7 +73,8 @@ class Newlabel(QLineEdit):
         if not state:
             self.state = state
             self.setFocusPolicy(Qt.NoFocus)
-            self.setSelection(0, 0)
+            if self.selectedText():
+                self.setSelection(0, 0)
             self.setStyleSheet(self.sheet['None'])
             self.setReadOnly(True)
         elif state == 'in':
@@ -115,10 +117,19 @@ class Newlabel(QLineEdit):
             [tag.stateChanged.emit(None) for tag in self.window.selects]
         self.stateChanged.emit('select')
         menu = QMenu(self)
+        newlink = menu.addAction('&新建连接标签')
+        newlink.triggered.connect(lambda: self.window.newlink(self, event))
+        newlinks = menu.addAction('&新建多连接标签')
+        newlinks.triggered.connect(lambda: self.window.newlink(self, event))
+        if len(self.window.selects) < 2:
+            newlinks.setEnabled(False)
+
+        menu.addSeparator()
         cut = menu.addAction("&剪切")
         cut.triggered.connect(self.window.cutTag)
         copy = menu.addAction("&复制")
         copy.triggered.connect(self.window.copyTag)
+
         menu.addSeparator()
         reset = menu.addAction("&还原")
         reset.triggered.connect(self.B_fun)
@@ -143,35 +154,36 @@ class Newlabel(QLineEdit):
             self.press = True
 
     def moveEvent(self, event):
-        if not self.window.move_head:
-            for tag in self.window.selects:
-                if hasattr(tag, 'temp'):
-                    self.window.move_head = tag
-        else:
-            if len(self.window.selects) > 1 and self == self.window.move_head:
-                if not self.window.selects_dis:
-                    for tag in self.window.selects:
-                        self.window.selects_dis[tag] = {'x': tag.x() - self.x(), 'y': tag.y() - self.y()}
+        if self.window.press:
+            if not self.window.move_head:
                 for tag in self.window.selects:
-                    if tag != self:
-                        # 触发位移时定义占位tag
-                        if not hasattr(tag, 'temp'):
-                            tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh * 3 / 2,mode='temp')
-                            tag.temp.setObjectName(tag.objectName())
-                            tag.temp.setText(tag.text())
+                    if hasattr(tag, 'temp'):
+                        self.window.move_head = tag
+            else:
+                if len(self.window.selects) > 1 and self == self.window.move_head:
+                    if not self.window.selects_dis:
+                        for tag in self.window.selects:
+                            self.window.selects_dis[tag] = {'x': tag.x() - self.x(), 'y': tag.y() - self.y()}
+                    for tag in self.window.selects:
+                        if tag != self:
+                            # 触发位移时定义占位tag
+                            if not hasattr(tag, 'temp'):
+                                tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh * 3 / 2, mode='temp')
+                                tag.temp.setObjectName(tag.objectName())
+                                tag.temp.setText(tag.text())
+                                tag.state = None
+                                tag.stateChanged.emit(tag.state)
+                                if tag.Bstate:
+                                    tag.temp.setStyleSheet(tag.sheet['B'])
+                                    tag.temp.Bstate = True
+                                else:
+                                    tag.temp.setStyleSheet('None')
+                            tag.setObjectName('temp')
                             tag.state = None
                             tag.stateChanged.emit(tag.state)
-                            if tag.Bstate:
-                                tag.temp.setStyleSheet(tag.sheet['B'])
-                                tag.temp.Bstate = True
-                            else:
-                                tag.temp.setStyleSheet('None')
-                        tag.setObjectName('temp')
-                        tag.state = None
-                        tag.stateChanged.emit(tag.state)
 
-                        tag.move(self.x() + self.window.selects_dis[tag]['x'],
-                                 self.y() + self.window.selects_dis[tag]['y'])
+                            tag.move(self.x() + self.window.selects_dis[tag]['x'],
+                                     self.y() + self.window.selects_dis[tag]['y'])
 
     def mouseMoveEvent(self, event):
         if self.state == 'edit' and not self.window.selects:
@@ -180,7 +192,7 @@ class Newlabel(QLineEdit):
             self.mm = True
             if not hasattr(self, 'temp'):
                 # 触发位移时定义占位tag
-                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh * 3 / 2,mode='temp')
+                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh * 3 / 2, mode='temp')
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
                 self.temp.setReadOnly(True)
@@ -204,7 +216,7 @@ class Newlabel(QLineEdit):
             for tag in alltag:
                 tx = tag.x()
                 ty = tag.y()
-                rect = QRect(QPoint(tx, ty), QPoint(tx + 3/2 * tag.width(), ty + 3/2 * tag.height()))
+                rect = QRect(QPoint(tx, ty), QPoint(tx + 3 / 2 * tag.width(), ty + 3 / 2 * tag.height()))
                 point = QPoint(event.globalX() - self.window.x(),
                                event.globalY() - self.window.y() - tag.height() / 2)
                 if rect.contains(point):
@@ -225,10 +237,6 @@ class Newlabel(QLineEdit):
                         tag.setStyleSheet(tag.sheet['None'])
                     if self.tgt == tag:
                         self.tgt = None
-        else:
-            self.setAcceptDrops(True)
-            self.setDragEnabled(True)
-            self.setReadOnly(False)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -258,14 +266,18 @@ class Newlabel(QLineEdit):
                 y = event.globalY()
                 if self.tgt:
                     # 连接后画线
-                    self.window.drawline_pt(self.temp, self.tgt)
+                    if self.window.selects:
+                        for tag in self.window.selects:
+                            self.window.drawline_pt(tag.temp, self.tgt)
+                    else:
+                        self.window.drawline_pt(self.temp, self.tgt)
+                    # 设置边框
                     if self.tgt.Bstate:
                         self.tgt.setStyleSheet(self.temp.sheet['B'])
                     else:
                         self.tgt.setStyleSheet(self.tgt.sheet['None'])
                 else:
                     # 非连接 移动tag
-                    # TODO:改bug temp的问题
                     if len(self.window.selects) > 1:
                         for tag in self.window.selects:
                             tag.temp.move(tag.x(), tag.y())
@@ -288,6 +300,10 @@ class Newlabel(QLineEdit):
                     tag.deltag()
             self.window.update()
             self.window.selects = []
+
+            alltag = self.window.findChildren(Newlabel)
+            for tag in alltag:
+                tag.stateChanged.emit(None)
 
     # def dropEvent(self, event):
     #     pass
@@ -348,15 +364,18 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
         # self.lines = []
         self.setWindowTitle("Concept map")
+
+        # 标签、连线、箭头信息
         self.lines = {}
         self.draw = False
         self.lpos = (None, None)
         self.arrows = {}
-        self.load = False
+        self.nodes = {}
         self.arrows_num = 1
         self.num = 1
+
+        self.load = False
         self.setMouseTracking(True)
-        self.nodes = {}
         self.window = self
         self.press = False
         self.filename = None
@@ -364,8 +383,11 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setAcceptDrops(True)
         self.press_s = None
         self.selects = []
-        self.selects_dis = {}
+        self.selects_dis = {}  # 选中tag的距离数据
         self.move_head = None
+
+        # alt键按下
+        self.alt_mode = False
 
         # 记录剪切数据
         self.cuts = []
@@ -377,7 +399,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.copysx = []
         self.copysy = []
 
-        self.lines_temp = {}
+        self.lines_temp = {}  # 剪切时暂存line数据
+        self.setAcceptDrops(True)
 
         # 文件菜单
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
@@ -394,7 +417,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_selectall.triggered.connect(self.selectAll)
 
         # 标签菜单
-        self.action_newtag.triggered.connect(lambda :self.inittag(self.width()/2,self.height()/2))
+        self.action_newtag.triggered.connect(lambda: self.inittag(self.width() / 2, self.height() / 2))
 
         # tag拖动框
         self.label_tag = Dlabel(self)
@@ -408,6 +431,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.label_rel.setGeometry(
             QtCore.QRect(self.screenWidth - 20, 0.25 * self.screenHeight, 20,
                          0.5 * self.screenHeight))
+
+        # 设置快捷键
+        QShortcut(QKeySequence("Ctrl+A"), self, self.selectAll)
+        QShortcut(QKeySequence("Ctrl+C"), self, self.copyTag)
+        QShortcut(QKeySequence("Ctrl+X"), self, self.cutTag)
+        QShortcut(QKeySequence("Ctrl+V"), self, self.pasteTag)
+
+        self.undostack = QUndoStack()
 
     def resizeEvent(self, event):
         # 保持Dlabel相对方位和大小
@@ -519,13 +550,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def drawline_pt(self, s, e):
         self.draw = True
-        # 两点间已有连线
+        # 两点间已有连线,改为反向
         if e.objectName() in self.lines:
             if s.objectName() in self.lines[e.objectName()]:
-                # self.lines[s.objectName()].append(e.objectName())
-                # self.lines[e.objectName()].remove(s.objectName())
-                # todo:添加反向线
-                return 0
+                if s.objectName() not in self.lines:
+                    self.lines[s.objectName()] = [e.objectName()]
+                else:
+                    self.lines[s.objectName()].append(e.objectName())
+                self.lines[e.objectName()].remove(s.objectName())
         # 无s点记录
         if s.objectName() not in self.lines:
             self.lines[s.objectName()] = [e.objectName()]
@@ -554,6 +586,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     self.update()
                     # 删除节点
                     tag.deltag()
+        elif event.key() == Qt.Key_Alt:
+            self.alt_mode = True
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Alt:
+            self.alt_mode = False
 
     def mousePressEvent(self, event):
         # 标记按下和坐标
@@ -612,7 +650,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 continue
             tag.state = None
             tag.stateChanged.emit(None)
-            tag.setFocusPolicy(Qt.NoFocus)
+            tag.setReadOnly(True)
+            tag.press = False
 
         # 选中框选范围内tag
         if self.press_s and hasattr(self, 'press_e'):
@@ -659,16 +698,40 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         self.inittag(x - wx, y - wy)
 
-    def inittag(self, x, y, mode = None):
+    def dropEvent(self, event):
+        text = event.mimeData().text()
+        new = self.inittag(event.pos().x(), event.pos().y())
+        new.setText(text)
+        if self.alt_mode:
+            new.Bstate = True
+        new.stateChanged.emit(None)
+        new.show()
+
+    def dragEnterEvent(self, event):
+        self.window.setCursor(QCursor(Qt.DragCopyCursor))
+        # 接受事件 将事件转到dropevent
+        event.accept()
+
+    def inittag(self, x, y, mode=None, mmode='h'):
+        '''
+        新建tag
+        :param mode: 是否调整坐标
+        :param mmode: 坐标调整模式
+        :return: 新tag
+        '''
         if not mode:
-            target = QPoint(x-tagw / 2, y-tagh * 3 / 2)
+            target = QPoint(x - tagw / 2, y - tagh * 3 / 2)
             alltag = self.findChildren(Newlabel)
             for tag in alltag:
                 area = QRect(QPoint(tag.x(), tag.y()),
                              QPoint(tag.x() + tag.width(), tag.y() + tag.height()))
                 if area.contains(target):
-                    # x += 50
-                    y += tagh
+                    if mmode == 'w':
+                        x += tagw
+                    elif mmode == '-w':
+                        x -= tagw
+                    elif mmode:
+                        y += tagh
                     target = QPoint(x - tagw / 2, y - tagh * 3 / 2)
 
         self.changed = True
@@ -684,6 +747,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if len(alltag) > 0:
             self.window.logo.hide()
         return eval('self.%s' % name)
+
+    def newlink(self, tag, event):
+        x = event.globalX() - self.x() + 2 * tagw
+        y = event.globalY() - self.y() + 2 * tagh
+        newtag = self.inittag(x, y)
+        if len(self.selects) < 2:
+            self.drawline_pt(tag, newtag)
+        else:
+            for tag in self.selects:
+                self.drawline_pt(tag, newtag)
 
     # 另存为
     def saveasfile(self):
@@ -821,7 +894,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.cuts = []
         self.cutsx = []
         self.cutsy = []
-        if self.selects:
+        if len(self.selects) > 1:
             for tag in self.selects:
                 tag.hide()
                 if tag.objectName() in self.lines:
@@ -831,12 +904,17 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.cuts.append(tag)
                 self.cutsx.append(tag.x())
                 self.cutsy.append(tag.y())
-            self.update()
+        else:
+            tag = self.selects[0]
+            for line in self.lines:
+                if tag.objectName() in self.lines[line]:
+                    self.lines[line].remove(tag.objectName())
+        self.update()
 
-            if self.copys:
-                self.copys = []
-                self.copysx = []
-                self.copysy = []
+        if self.copys:
+            self.copys = []
+            self.copysx = []
+            self.copysy = []
 
     def copyTag(self):
         self.copys = []
@@ -854,7 +932,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.cutsy = []
 
     def pasteTag(self):
+        self.selects = []
         # 剪切到粘贴
+        # TODO:不能多次从剪切到粘贴，需要改实现方式
         if self.cuts:
             xs = sum(self.cutsx) / len(self.cutsx)
             offsetx = xs - self.width() / 2
@@ -869,11 +949,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 tag.stateChanged.emit(None)
             self.update()
 
-            self.cuts = []
-            self.cutsx = []
-            self.cutsy = []
+            # self.cuts = []
+            # self.cutsx = []
+            # self.cutsy = []
 
         # 复制到粘贴
+        # TODO: 复制多连线内容坐标会乱
         if self.copys:
             # 计算坐标偏移
             xs = sum(self.copysx) / len(self.copysx)
@@ -884,13 +965,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             news = []  # 存储新tag
             # 复制tag
             for index, tag in enumerate(self.copys):
-                new = self.inittag(self.copysx[index] + offsetx, self.copysy[index] + offsety)
+                new = self.inittag(self.copysx[index] - offsetx, self.copysy[index] - offsety)
 
                 # TODO:不能复制全部属性，则其他需复制属性待添加
                 new.setText(tag.text())
                 new.Bstate = tag.Bstate
 
-                new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
+                # new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
                 news.append(new)
 
             # 复制连线信息
@@ -942,8 +1023,7 @@ class Dlabel(QLabel):
         # tag生成
         if self.objectName() == 'tag':
             for index, tag in enumerate(texts):
-                # TODO: 调整新tag坐标
-                new = self.window.inittag(self.width() + tagw/2, self.y() + (index + 1) * 80)
+                new = self.window.inittag(self.width() + tagw / 2, self.y() + (index + 1) * 80, mmode='w')
                 # new.move(self.width() + 20, self.y() + (index + 1) * 80)
                 new.setStyleSheet(new.sheet['B'])
                 new.Bstate = True
@@ -953,15 +1033,14 @@ class Dlabel(QLabel):
         # rel生成
         else:
             for index, tag in enumerate(texts):
-                new = self.window.inittag(self.window.width() - self.width() - tagw, self.y() + (index + 1) * 80)
+                new = self.window.inittag(self.window.width() - self.width() - tagw, self.y() + (index + 1) * 80,
+                                          mmode='-w')
                 # new.move(self.window.width() - self.width() - tagw, self.y() + (index + 1) * 80)
                 new.setStyleSheet(new.sheet['None'])
                 new.setReadOnly(True)
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
-
-        # TODO：检测生成的tag位置 防止多次生成重叠
 
     def dragLeaveEvent(self, event):
         self.setStyleSheet("border-width:0px;border-style: None; "
