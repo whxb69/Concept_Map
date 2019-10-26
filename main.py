@@ -283,17 +283,7 @@ class Newlabel(QLineEdit):
             for tag in tagToDel:
                 tag.deltag()
         self.window.update()
-
-        alltag = self.window.findChildren(Newlabel)
-
-        # 检查并更新各tag状态
-        for tag in alltag:
-            if not tag.text():
-                tag.deltag()
-                continue
-            tag.state = None
-            tag.stateChanged.emit(None)
-            tag.setFocusPolicy(Qt.NoFocus)
+        self.window.selects = []
         
 
     # def dropEvent(self, event):
