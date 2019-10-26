@@ -92,6 +92,7 @@ class Newlabel(QLineEdit):
             if self in self.window.selects:
                 self.window.selects.remove(self)
             self.state = state
+            self.setDragEnabled(True)
             self.setFocusPolicy(Qt.StrongFocus)
             self.setSelection(len(self.text()), len(self.text()))
             if self.Bstate:
@@ -152,6 +153,7 @@ class Newlabel(QLineEdit):
             if self.state == 'edit':
                 super().mousePressEvent(event)
             self.press = True
+            self.window.press = True
 
     def moveEvent(self, event):
         if self.window.press:
@@ -301,9 +303,9 @@ class Newlabel(QLineEdit):
             self.window.update()
             self.window.selects = []
 
-            alltag = self.window.findChildren(Newlabel)
-            for tag in alltag:
-                tag.stateChanged.emit(None)
+            # alltag = self.window.findChildren(Newlabel)
+            # for tag in alltag:
+            #     tag.stateChanged.emit(None)
 
     # def dropEvent(self, event):
     #     pass
@@ -699,13 +701,15 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.inittag(x - wx, y - wy)
 
     def dropEvent(self, event):
-        text = event.mimeData().text()
-        new = self.inittag(event.pos().x(), event.pos().y())
-        new.setText(text)
-        if self.alt_mode:
-            new.Bstate = True
-        new.stateChanged.emit(None)
-        new.show()
+        self.setFocusPolicy(Qt.StrongFocus)
+        texts = event.mimeData().text().split('\n')
+        for text in texts:
+            new = self.inittag(event.pos().x(), event.pos().y())
+            new.setText(text)
+            if self.alt_mode:
+                new.Bstate = True
+            new.stateChanged.emit(None)
+            new.show()
 
     def dragEnterEvent(self, event):
         self.window.setCursor(QCursor(Qt.DragCopyCursor))
