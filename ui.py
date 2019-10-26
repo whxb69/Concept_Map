@@ -93,6 +93,15 @@ class Ui_MainWindow(object):
         m_edit.addAction(self.action_find)  # 查找
         m_edit.addAction(self.action_selectall)  # 全选
 
+        self.action_newtag = QAction("&新建标签", MainWindow)
+        self.action_newtag.setObjectName("actionnewtag")
+        self.action_newtag.setToolTip('新建')
+
+        m_note = self.menubar.addMenu('标签')
+        m_note.addAction(self.action_newtag)
+
+
+
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
