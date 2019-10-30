@@ -301,7 +301,9 @@ class Newlabel(QLineEdit):
                 for tag in tagToDel:
                     tag.deltag()
             self.window.update()
-            self.window.selects = []
+            if self.window.selects != [self] \
+            and self.state == 'select':
+                self.window.selects = []
 
             # alltag = self.window.findChildren(Newlabel)
             # for tag in alltag:
@@ -397,9 +399,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.cutsy = []
 
         # 记录复制信息
-        self.copys = []
-        self.copysx = []
-        self.copysy = []
+        self.copys = {}
+        self.copysx = {}
+        self.copysy = {}
 
         self.lines_temp = {}  # 剪切时暂存line数据
         self.setAcceptDrops(True)
@@ -734,7 +736,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                         x += tagw
                     elif mmode == '-w':
                         x -= tagw
-                    elif mmode:
+                    elif mmode=='x':
+                        x +=tagw
+                        y +=tagh  
+                    elif mmode=='h':
                         y += tagh
                     target = QPoint(x - tagw / 2, y - tagh * 3 / 2)
 
@@ -895,40 +900,57 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.new.show()
 
     def cutTag(self):
-        self.cuts = []
-        self.cutsx = []
-        self.cutsy = []
+        self.cuts = {}
+        self.cut_lines = {}
+        #剪切多个tag
         if len(self.selects) > 1:
-            for tag in self.selects:
-                tag.hide()
+            for index,tag in enumerate(self.selects):
+                #记录点
+                self.cuts[index] = {'x':tag.x()-self.selects[0].x(),
+                                    'y':tag.y()-self.selects[0].y()}
+                #记录连线
                 if tag.objectName() in self.lines:
-                    self.lines_temp[tag.objectName()] = self.lines[tag.objectName()]
-                    self.lines.pop(tag.objectName())
-
-                self.cuts.append(tag)
-                self.cutsx.append(tag.x())
-                self.cutsy.append(tag.y())
+                    self.cut_lines[index] = []
+                    for tag_e in self.lines[tag.objectName()]:
+                        if self.window.findChild(Newlabel,tag_e) in self.selects:
+                            tgt = self.window.findChild(Newlabel,tag_e)
+                            self.cut_lines[index].append(self.selects.index(tgt))
+            #TODO:先遍历一遍后又遍历删除 需要优化
+            for tag in self.selects:
+                tag.deltag()
+        #剪切单个tag
         else:
             tag = self.selects[0]
+            if tag.objectName() in self.lines:
+                self.lines.pop(tag.objectName())
             for line in self.lines:
                 if tag.objectName() in self.lines[line]:
                     self.lines[line].remove(tag.objectName())
+            self.cuts[0] = {'x': 0, 'y': 0}
+            tag.deltag()
         self.update()
 
         if self.copys:
-            self.copys = []
-            self.copysx = []
-            self.copysy = []
+            self.copys = {}
+            self.copy_lines = {}
 
     def copyTag(self):
-        self.copys = []
-        self.copyx = []
-        self.copyy = []
+        self.copys = {}
+        self.copy_lines = {}
         if self.selects:
-            for tag in self.selects:
-                self.copys.append(tag)
-                self.copysx.append(tag.x())
-                self.copysy.append(tag.y())
+            for index,tag in enumerate(self.selects):
+                #记录点
+                self.copys[index] = {'x':tag.x()-self.selects[0].x(),
+                                    'y':tag.y()-self.selects[0].y(),
+                                    'text':tag.text(),
+                                    'Bstate':tag.Bstate}
+                #记录连线
+                if tag.objectName() in self.lines:
+                    self.copy_lines[index] = []
+                    for tag_e in self.lines[tag.objectName()]:
+                        if self.window.findChild(Newlabel,tag_e) in self.selects:
+                            tgt = self.window.findChild(Newlabel,tag_e)
+                            self.copy_lines[index].append(self.selects.index(tgt))
 
             if self.cuts:
                 self.cuts = []
@@ -938,57 +960,45 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def pasteTag(self):
         self.selects = []
         # 剪切到粘贴
-        # TODO:不能多次从剪切到粘贴，需要改实现方式
         if self.cuts:
-            xs = sum(self.cutsx) / len(self.cutsx)
-            offsetx = xs - self.width() / 2
-            ys = sum(self.cutsy) / len(self.cutsy)
-            offsety = ys - self.height() / 2
-            for index, tag in enumerate(self.cuts):
-                tag.move(self.cutsx[index] - offsetx, self.cutsy[index] - offsety)
-                if tag.objectName() in self.lines_temp:
-                    self.lines[tag.objectName()] = self.lines_temp[tag.objectName()]
-                    self.lines_temp.pop(tag.objectName())
-                tag.show()
-                tag.stateChanged.emit(None)
-            self.update()
-
-            # self.cuts = []
-            # self.cutsx = []
-            # self.cutsy = []
-
-        # 复制到粘贴
-        # TODO: 复制多连线内容坐标会乱
-        if self.copys:
-            # 计算坐标偏移
-            xs = sum(self.copysx) / len(self.copysx)
-            offsetx = xs - self.width() / 2
-            ys = sum(self.copysy) / len(self.copysy)
-            offsety = ys - self.height() / 2
-
-            news = []  # 存储新tag
+            news = {}  # 存储新tag
             # 复制tag
-            for index, tag in enumerate(self.copys):
-                new = self.inittag(self.copysx[index] - offsetx, self.copysy[index] - offsety)
-
-                # TODO:不能复制全部属性，则其他需复制属性待添加
-                new.setText(tag.text())
-                new.Bstate = tag.Bstate
-
-                # new.move(self.copysx[index] - offsetx, self.copysy[index] - offsety)
-                news.append(new)
-
-            # 复制连线信息
-            for tag, new in zip(self.copys, news):
-                if tag.objectName() in self.lines:
-                    self.lines[new.objectName()] = []
-                    for tag_e in self.lines[tag.objectName()]:
-                        tag_o = self.findChild(QLineEdit, tag_e)
-                        if tag_o in self.copys:
-                            tag_n = news[self.copys.index(tag_o)]
-                            self.lines[new.objectName()].append(tag_n.objectName())
+            for tag in self.cuts:
+                new = self.inittag(self.width()/2 + self.cuts[tag]['x'],
+                                    self.height()/2 + self.cuts[tag]['y'],
+                                    'x')
+                
                 new.stateChanged.emit(None)
                 new.show()
+                news[tag]=new
+            # 复制连线信息
+            for tag in news:
+                if tag in self.cut_lines:
+                    for tag_e in self.cut_lines[tag]:
+                        self.drawline_pt(news[tag],news[tag_e])
+            self.update()
+
+        # 复制到粘贴
+        if self.copys:
+            news = {}  # 存储新tag
+            # 复制tag
+            for tag in self.copys:
+                new = self.inittag(self.width()/2 + self.copys[tag]['x'],
+                                    self.height()/2 + self.copys[tag]['y'],
+                                    'x')
+
+                # 不能复制全部属性，则其他需复制属性待添加
+                new.setText(self.copys[tag]['text'])
+                new.Bstate = self.copys[tag]['Bstate']
+                
+                new.stateChanged.emit(None)
+                new.show()
+                news[tag]=new
+            # 复制连线信息
+            for tag in news:
+                if tag in self.copy_lines:
+                    for tag_e in self.copy_lines[tag]:
+                        self.drawline_pt(news[tag],news[tag_e])
             self.update()
 
     def deleteTag(self):
