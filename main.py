@@ -37,6 +37,8 @@ class Newlabel(QLineEdit):
                            "background-color:rgb(240,240,240)",
                       'select': "border-width:3px;border-style: solid; "
                                 "border-radius: 15px;border-color: rgb(150, 100, 0);",
+                      'Bselect': "border: 3px solid black;"
+                                 "outline: 5px solid red;",
                       'crash': "border-width: 0px;border-radius: 15px; border-style: solid;"
                                "border-color: rgb(0, 0, 0);background-color: gray;",
                       'Bcrash': "border-width: 5px;border-radius: 15px; border-style: solid;"
@@ -76,6 +78,7 @@ class Newlabel(QLineEdit):
             if self.selectedText():
                 self.setSelection(0, 0)
             self.setStyleSheet(self.sheet['None'])
+            self.setGraphicsEffect(None)
             self.setReadOnly(True)
         elif state == 'in':
             self.state = state
@@ -85,7 +88,15 @@ class Newlabel(QLineEdit):
         elif state == 'select':
             self.state = state
             self.setFocusPolicy(Qt.NoFocus)
-            self.setStyleSheet(self.sheet[state])
+            if self.Bstate:
+                self.setStyleSheet(self.sheet['select'])
+                effect = QGraphicsDropShadowEffect()
+                effect.setOffset(0, 0)
+                effect.setBlurRadius(20)
+                effect.setColor(Qt.blue)
+                self.setGraphicsEffect(effect)
+            else:
+                self.setStyleSheet(self.sheet[state])
             if self not in self.window.selects:
                 self.window.selects.append(self)
         elif state == 'edit':
@@ -97,6 +108,11 @@ class Newlabel(QLineEdit):
             self.setSelection(len(self.text()), len(self.text()))
             if self.Bstate:
                 self.setStyleSheet(self.sheet['Bedit'])
+                effect = QGraphicsDropShadowEffect()
+                effect.setOffset(0, 0)
+                effect.setBlurRadius(10)
+                effect.setColor(Qt.red)
+                self.setGraphicsEffect(effect)
             else:
                 self.setStyleSheet(self.sheet[state])
             self.setReadOnly(False)
