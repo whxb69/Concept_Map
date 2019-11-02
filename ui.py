@@ -7,7 +7,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QAction, QLabel, QScrollArea, QWidget
+from PyQt5.QtWidgets import QAction, QLabel, QScrollArea, QScrollBar, QHBoxLayout
 
 
 class Ui_MainWindow(object):
@@ -22,9 +22,14 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
         self.centralwidget.setMouseTracking(True)
+        self.hbox = QHBoxLayout()
+        self.centralwidget.setLayout(self.hbox)
 
-        self.topFiller = QWidget()
-        self.topFiller.setMinimumSize(250, 2000)
+
+        self.sb = QScrollBar(self)
+        # self.sb.setMinimum(0.5*self.screenHeight)
+        MainWindow.layout()
+        self.hbox.addWidget(self.sb)
 
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1941, 37))
@@ -101,8 +106,13 @@ class Ui_MainWindow(object):
         self.action_newtag.setObjectName("actionnewtag")
         self.action_newtag.setToolTip('新建')
 
+        self.action_newtags= QAction("&批量新建", MainWindow)
+        self.action_newtags.setObjectName("actionnewtags")
+        self.action_newtags.setToolTip('批量新建')
+
         m_note = self.menubar.addMenu('标签')
         m_note.addAction(self.action_newtag)
+        m_note.addAction(self.action_newtags)
 
 
 

@@ -1,5 +1,6 @@
 from ui import *
 from findui import *
+from newtags import *
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -141,7 +142,6 @@ class Newlabel(QLineEdit):
             newlinks.setEnabled(False)
         else:
             newlink.setEnabled(False)
-
 
         menu.addSeparator()
         cut = menu.addAction("&剪切")
@@ -320,7 +320,7 @@ class Newlabel(QLineEdit):
                     tag.deltag()
             self.window.update()
             if self.window.selects != [self] \
-            and self.state == 'select':
+                    and self.state == 'select':
                 self.window.selects = []
 
             # alltag = self.window.findChildren(Newlabel)
@@ -389,7 +389,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
         # self.lines = []
         self.setWindowTitle("Concept map")
-        
+
         # 标签、连线、箭头信息
         self.lines = {}
         self.draw = False
@@ -411,11 +411,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.selects_dis = {}  # 选中tag的距离数据
         self.move_head = None
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidget(self.topFiller)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidget(self.centralwidget)
+        self.scroll_area.resize(self.width(),self.height())
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.sb.sliderMoved.connect(self.test)
 
         # alt键按下
         self.alt_mode = False
@@ -449,6 +451,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         # 标签菜单
         self.action_newtag.triggered.connect(lambda: self.inittag(self.width() / 2, self.height() / 2))
+        self.action_newtags.triggered.connect(self.newtags)
 
         # tag拖动框
         self.label_tag = Dlabel(self)
@@ -470,7 +473,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         QShortcut(QKeySequence("Ctrl+V"), self, self.pasteTag)
 
         self.undostack = QUndoStack()
-
+    def test(self):
+        print(self.sb.value())
+        self.scroll_area.scrollContentsBy(500,self.sb.value())
 
     def resizeEvent(self, event):
         # 保持Dlabel相对方位和大小
@@ -478,7 +483,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.label_tag.move(0, 0.25 * self.height())
         self.label_rel.resize(20, 0.5 * self.height())
         self.label_rel.move(self.width() - 20, 0.25 * self.height())
-        self.scroll_area.resize(self.width(),self.height())
+        self.logo.move(self.width()*0.35,self.height()*7/16)
+        # self.scroll_area.resize(self.width(), self.height())
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -761,16 +767,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             alltag = self.findChildren(Newlabel)
             for tag in alltag:
                 area = QRect(QPoint(tag.x(), tag.y()),
-                             QPoint(tag.x() + tag.width(), tag.y() + tag.height()*2))
+                             QPoint(tag.x() + tag.width(), tag.y() + tag.height() * 2))
                 if area.contains(target):
                     if mmode == 'w':
                         x += tagw
                     elif mmode == '-w':
                         x -= tagw
-                    elif mmode=='x':
-                        x +=tagw/2
-                        y +=tagh/2
-                    elif mmode=='h':
+                    elif mmode == 'x':
+                        x += tagw / 2
+                        y += tagh / 2
+                    elif mmode == 'h':
                         y += tagh
                     target = QPoint(x, y)
 
@@ -868,6 +874,23 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if not FileName:
             return 0
         else:
+            if self.filename == FileName:
+                return 0
+            else:
+                cur = self
+                while hasattr(cur,'father'):
+                    cur = cur.father
+                    if cur.filename == FileName:
+                        cur.setWindowState(Qt.WindowActive)
+                        return 0
+                while hasattr(cur,'new'):
+                    cur = cur.new
+                    if cur.filename == FileName:
+                        cur.setWindowState(Qt.WindowActive)
+                        return 0
+
+
+
             new.filename = FileName
             new.setWindowTitle("Concept map - " + os.path.basename(new.filename))
 
@@ -904,9 +927,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     temp_n = []
                     if '-' in cons_t:  # 适应sapple文件格式
                         for c in cons:
-                            sn, en = [int(n) for n in c.split('-')]
-                            ns = ['tag' + str(n) for n in range(sn, en + 1)]
-                            temp_n += ns
+                            if '-' in c:
+                                sn, en = [int(n) for n in c.split('-')]
+                                ns = ['tag' + str(n) for n in range(sn, en + 1)]
+                                temp_n += ns
+                            else:
+                                temp_n.append('tag'+c)
                         cons = temp_n
                     else:
                         if 'tag' not in cons_t:
@@ -915,9 +941,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                             cons = temp_n
                     new.lines[nid] = cons
 
-            if info['Bstate'] == 'True':
-                tag.Bstate = True
-                tag.setStyleSheet(tag.sheet['B'])
+
+            try:
+                if info['Bstate'] == 'True':
+                    tag.Bstate = True
+                    tag.setStyleSheet(tag.sheet['B'])
+            except:
+                if node.find('Appearance').find('Border').attrib['Weight'] != '0':
+                    tag.Bstate = True
+                    tag.setStyleSheet(tag.sheet['B'])
+
             tag.show()
 
         new.num += 1  # 更新计数器，防止与读取内容冲突
@@ -927,29 +960,30 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def newfile(self):
         self.new = Mainwindow()
+        self.new.father=self
         self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
 
     def cutTag(self):
         self.cuts = {}
         self.cut_lines = {}
-        #剪切多个tag
+        # 剪切多个tag
         if len(self.selects) > 1:
-            for index,tag in enumerate(self.selects):
-                #记录点
-                self.cuts[index] = {'x':tag.x()-self.selects[0].x(),
-                                    'y':tag.y()-self.selects[0].y()}
-                #记录连线
+            for index, tag in enumerate(self.selects):
+                # 记录点
+                self.cuts[index] = {'x': tag.x() - self.selects[0].x(),
+                                    'y': tag.y() - self.selects[0].y()}
+                # 记录连线
                 if tag.objectName() in self.lines:
                     self.cut_lines[index] = []
                     for tag_e in self.lines[tag.objectName()]:
-                        if self.window.findChild(Newlabel,tag_e) in self.selects:
-                            tgt = self.window.findChild(Newlabel,tag_e)
+                        if self.window.findChild(Newlabel, tag_e) in self.selects:
+                            tgt = self.window.findChild(Newlabel, tag_e)
                             self.cut_lines[index].append(self.selects.index(tgt))
-            #TODO:先遍历一遍后又遍历删除 需要优化
-            while len(self.selects)>0:
+            # TODO:先遍历一遍后又遍历删除 需要优化
+            while self.selects:
                 self.selects[-1].deltag()
-        #剪切单个tag
+        # 剪切单个tag
         else:
             tag = self.selects[0]
             if tag.objectName() in self.lines:
@@ -969,18 +1003,18 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.copys = {}
         self.copy_lines = {}
         if self.selects:
-            for index,tag in enumerate(self.selects):
-                #记录点
-                self.copys[index] = {'x':tag.x()-self.selects[0].x(),
-                                    'y':tag.y()-self.selects[0].y(),
-                                    'text':tag.text(),
-                                    'Bstate':tag.Bstate}
-                #记录连线
+            for index, tag in enumerate(self.selects):
+                # 记录点
+                self.copys[index] = {'x': tag.x() - self.selects[0].x(),
+                                     'y': tag.y() - self.selects[0].y(),
+                                     'text': tag.text(),
+                                     'Bstate': tag.Bstate}
+                # 记录连线
                 if tag.objectName() in self.lines:
                     self.copy_lines[index] = []
                     for tag_e in self.lines[tag.objectName()]:
-                        if self.window.findChild(Newlabel,tag_e) in self.selects:
-                            tgt = self.window.findChild(Newlabel,tag_e)
+                        if self.window.findChild(Newlabel, tag_e) in self.selects:
+                            tgt = self.window.findChild(Newlabel, tag_e)
                             self.copy_lines[index].append(self.selects.index(tgt))
 
             if self.cuts:
@@ -995,18 +1029,18 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             news = {}  # 存储新tag
             # 复制tag
             for tag in self.cuts:
-                new = self.inittag(self.width()/2 + self.cuts[tag]['x'],
-                                    self.height()/2 + self.cuts[tag]['y'],
-                                    mmode='x')
-                
+                new = self.inittag(self.width() / 2 + self.cuts[tag]['x'],
+                                   self.height() / 2 + self.cuts[tag]['y'],
+                                   mmode='x')
+
                 new.stateChanged.emit(None)
                 new.show()
-                news[tag]=new
+                news[tag] = new
             # 复制连线信息
             for tag in news:
                 if tag in self.cut_lines:
                     for tag_e in self.cut_lines[tag]:
-                        self.drawline_pt(news[tag],news[tag_e])
+                        self.drawline_pt(news[tag], news[tag_e])
             self.update()
 
         # 复制到粘贴
@@ -1014,39 +1048,42 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             news = {}  # 存储新tag
             # 复制tag
             for tag in self.copys:
-                new = self.inittag(self.width()/2 + self.copys[tag]['x'],
-                                    self.height()/2 + self.copys[tag]['y'],
-                                    mmode='x')
+                new = self.inittag(self.width() / 2 + self.copys[tag]['x'],
+                                   self.height() / 2 + self.copys[tag]['y'],
+                                   mmode='x')
 
                 # 不能复制全部属性，则其他需复制属性待添加
                 new.setText(self.copys[tag]['text'])
                 new.Bstate = self.copys[tag]['Bstate']
-                
+
                 new.stateChanged.emit(None)
                 new.show()
-                news[tag]=new
+                news[tag] = new
             # 复制连线信息
             for tag in news:
                 if tag in self.copy_lines:
                     for tag_e in self.copy_lines[tag]:
-                        self.drawline_pt(news[tag],news[tag_e])
+                        self.drawline_pt(news[tag], news[tag_e])
             self.update()
 
     def deleteTag(self):
         if self.selects:
-            for tag in self.selects:
-                tag.deltag()
+            while self.selects:
+                self.selects[-1].deltag()
 
     def findAndReplace(self):
         findDia = Find_D(self)
         findDia.exec_()
 
-        alltag = self.window.findChildren(Newlabel)
 
     def selectAll(self):
         alltag = self.window.findChildren(Newlabel)
         for tag in alltag:
             tag.stateChanged.emit('select')
+
+    def newtags(self):
+        NewDia = New_D(self)
+        NewDia.exec_()
 
 
 class Dlabel(QLabel):
@@ -1098,6 +1135,21 @@ class Dlabel(QLabel):
         self.window.setCursor(QCursor(Qt.DragCopyCursor))
         # 接受事件 将事件转到dropevent
         event.accept()
+
+
+class New_D(QDialog, New_Form):
+    def __init__(self, parent=None):
+        super(New_D, self).__init__(parent)
+        self.setupUi(app)
+        self.window = self.parentWidget()
+        self.btn_yes.clicked.connect(self.news)
+        self.btn_no.clicked.connect(lambda: self.close())
+
+    def news(self):
+        num = self.spinBox.value()
+        for i in range(num):
+            self.window.inittag(self.window.width()/2,self.window.height()/2)
+        self.close()
 
 
 class Find_D(QDialog, Find_Form):
