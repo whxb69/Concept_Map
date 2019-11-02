@@ -7,7 +7,7 @@
 # WARNING! All changes made in this file will be lost!
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QAction, QLabel
+from PyQt5.QtWidgets import QAction, QLabel, QScrollArea, QWidget
 
 
 class Ui_MainWindow(object):
@@ -22,6 +22,10 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         MainWindow.setCentralWidget(self.centralwidget)
         self.centralwidget.setMouseTracking(True)
+
+        self.topFiller = QWidget()
+        self.topFiller.setMinimumSize(250, 2000)
+
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1941, 37))
         self.menubar.setObjectName("menubar")

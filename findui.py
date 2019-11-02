@@ -17,8 +17,8 @@ class Find_Form(object):
         pbtnh = 46 * math.sqrt(app.desktop().width() / 2160)
         boxw = 351 * math.sqrt(app.desktop().width() / 3840)
         boxh = 121 * math.sqrt(app.desktop().width() / 2160)
-        rbtnw = 150 * math.sqrt(app.desktop().width() / 3840)
-        rbtnh = 46 * math.sqrt(app.desktop().width() / 2160)
+        # rbtnw = 150 * math.sqrt(app.desktop().width() / 3840)
+        # rbtnh = 46 * math.sqrt(app.desktop().width() / 2160)
         self.line_find = QtWidgets.QLineEdit(self)
         self.line_find.setGeometry(QtCore.QRect(90, 30, linew, lineh))
         self.line_find.setObjectName("line_find")
@@ -51,7 +51,7 @@ class Find_Form(object):
                                 28 * math.sqrt(app.desktop().width() / 2160)))
         self.get_sel.setObjectName("get_sel")
         self.get_all = QtWidgets.QRadioButton(self.groupBox)
-        self.get_all.setGeometry(QtCore.QRect(210, 50, 91* math.sqrt(app.desktop().width() / 3840),
+        self.get_all.setGeometry(QtCore.QRect(50+self.get_sel.width(), 50, 91* math.sqrt(app.desktop().width() / 3840),
                                 28 * math.sqrt(app.desktop().width() / 2160)))
         self.get_all.setObjectName("get_all")
 

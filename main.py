@@ -59,7 +59,6 @@ class Newlabel(QLineEdit):
         # self.opos = None
 
         self.window = self.parentWidget()
-        # TODO:B框和select与edit的结合
 
     def widthchange(self):
         # tag宽度自适应
@@ -93,7 +92,7 @@ class Newlabel(QLineEdit):
                 effect = QGraphicsDropShadowEffect()
                 effect.setOffset(0, 0)
                 effect.setBlurRadius(20)
-                effect.setColor(Qt.blue)
+                effect.setColor(Qt.red)
                 self.setGraphicsEffect(effect)
             else:
                 self.setStyleSheet(self.sheet[state])
@@ -110,8 +109,8 @@ class Newlabel(QLineEdit):
                 self.setStyleSheet(self.sheet['Bedit'])
                 effect = QGraphicsDropShadowEffect()
                 effect.setOffset(0, 0)
-                effect.setBlurRadius(10)
-                effect.setColor(Qt.red)
+                effect.setBlurRadius(20)
+                effect.setColor(Qt.green)
                 self.setGraphicsEffect(effect)
             else:
                 self.setStyleSheet(self.sheet[state])
@@ -140,6 +139,9 @@ class Newlabel(QLineEdit):
         newlinks.triggered.connect(lambda: self.window.newlink(self, event))
         if len(self.window.selects) < 2:
             newlinks.setEnabled(False)
+        else:
+            newlink.setEnabled(False)
+
 
         menu.addSeparator()
         cut = menu.addAction("&剪切")
@@ -357,6 +359,8 @@ class Newlabel(QLineEdit):
                 if self in value:
                     keys.append(key)
         [self.window.arrows.pop(key) for key in keys]
+        if self in self.window.selects:
+            self.window.selects.remove(self)
         self.deleteLater()
         sip.delete(self)
         self.window.update()
@@ -379,12 +383,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(Mainwindow, self).__init__(parent)
         self.setupUi(self)
+        # TODO:创建滚动条
         # self.scroll = QScrollArea()
         # self.scroll.setWidget(self)
         self.setContextMenuPolicy(Qt.DefaultContextMenu)
         # self.lines = []
         self.setWindowTitle("Concept map")
-
+        
         # 标签、连线、箭头信息
         self.lines = {}
         self.draw = False
@@ -405,6 +410,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.selects = []
         self.selects_dis = {}  # 选中tag的距离数据
         self.move_head = None
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidget(self.topFiller)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         # alt键按下
         self.alt_mode = False
@@ -460,12 +471,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         self.undostack = QUndoStack()
 
+
     def resizeEvent(self, event):
         # 保持Dlabel相对方位和大小
         self.label_tag.resize(20, 0.5 * self.height())
         self.label_tag.move(0, 0.25 * self.height())
         self.label_rel.resize(20, 0.5 * self.height())
         self.label_rel.move(self.width() - 20, 0.25 * self.height())
+        self.scroll_area.resize(self.width(),self.height())
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -476,7 +489,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         # cut = menu.addAction('&剪切')
         # copy = menu.addAction('&复制')
         paste = menu.addAction('&粘贴')
+        selall = menu.addAction('&全选')
         paste.triggered.connect(self.pasteTag)
+        selall.triggered.connect(self.selectAll)
         menu.exec_(event.globalPos())
 
     def closeEvent(self, event):
@@ -742,22 +757,22 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         :return: 新tag
         '''
         if not mode:
-            target = QPoint(x - tagw / 2, y - tagh * 3 / 2)
+            target = QPoint(x, y)
             alltag = self.findChildren(Newlabel)
             for tag in alltag:
                 area = QRect(QPoint(tag.x(), tag.y()),
-                             QPoint(tag.x() + tag.width(), tag.y() + tag.height()))
+                             QPoint(tag.x() + tag.width(), tag.y() + tag.height()*2))
                 if area.contains(target):
                     if mmode == 'w':
                         x += tagw
                     elif mmode == '-w':
                         x -= tagw
                     elif mmode=='x':
-                        x +=tagw
-                        y +=tagh  
+                        x +=tagw/2
+                        y +=tagh/2
                     elif mmode=='h':
                         y += tagh
-                    target = QPoint(x - tagw / 2, y - tagh * 3 / 2)
+                    target = QPoint(x, y)
 
         self.changed = True
         name = 'tag' + str(self.num)
@@ -932,8 +947,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                             tgt = self.window.findChild(Newlabel,tag_e)
                             self.cut_lines[index].append(self.selects.index(tgt))
             #TODO:先遍历一遍后又遍历删除 需要优化
-            for tag in self.selects:
-                tag.deltag()
+            while len(self.selects)>0:
+                self.selects[-1].deltag()
         #剪切单个tag
         else:
             tag = self.selects[0]
@@ -982,7 +997,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             for tag in self.cuts:
                 new = self.inittag(self.width()/2 + self.cuts[tag]['x'],
                                     self.height()/2 + self.cuts[tag]['y'],
-                                    'x')
+                                    mmode='x')
                 
                 new.stateChanged.emit(None)
                 new.show()
@@ -1001,7 +1016,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             for tag in self.copys:
                 new = self.inittag(self.width()/2 + self.copys[tag]['x'],
                                     self.height()/2 + self.copys[tag]['y'],
-                                    'x')
+                                    mmode='x')
 
                 # 不能复制全部属性，则其他需复制属性待添加
                 new.setText(self.copys[tag]['text'])
