@@ -1,6 +1,8 @@
 from ui import *
 from findui import *
 from newtags import *
+from undo import *
+
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -312,12 +314,12 @@ class Newlabel(QLineEdit):
                 self.temp.stateChanged.emit(None)
                 if self.temp.Bstate:
                     self.temp.setStyleSheet(self.temp.sheet['B'])
-                self.deltag()
+                self.deltag(True)
             # 删除占位tag
             tagToDel = self.window.findChildren(Newlabel, 'temp')
             if tagToDel:
                 for tag in tagToDel:
-                    tag.deltag()
+                    tag.deltag(True)
             self.window.update()
             if self.window.selects != [self] \
                     and self.state == 'select':
@@ -352,7 +354,15 @@ class Newlabel(QLineEdit):
             self.Bstate = False
             self.stateChanged.emit(self.state)
 
-    def deltag(self):
+    def deltag(self,temp=False):
+        # if not temp:
+        #     try:
+        #         cmd = UndoDelTag(self.window, {self.objectName():{'x':self.x(), 'y':self.y()}},True)
+        #     # self.window.cmdstack.append(cmd)
+        #         self.window.undostack.push(cmd)
+        #     except:
+        #         pass
+
         keys = []  # 待删除arrows索引
         if self.window.arrows:
             for key, value in self.window.arrows.items():
@@ -365,6 +375,7 @@ class Newlabel(QLineEdit):
         sip.delete(self)
         self.window.update()
 
+        #更新logo状态
         alltag = self.window.findChildren(Newlabel)
         if len(alltag) == 0:
             self.window.logo.move(self.window.width() * 0.4, self.window.height() * 7 / 16)
@@ -411,13 +422,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.selects_dis = {}  # 选中tag的距离数据
         self.move_head = None
 
-        self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidget(self.centralwidget)
-        self.scroll_area.resize(self.width(),self.height())
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.sb.sliderMoved.connect(self.test)
+        # self.scroll_area = QScrollArea(self)
+        # self.scroll_area.setWidget(self.centralwidget)
+        # self.scroll_area.resize(self.width(),self.height())
+        # self.scroll_area.setWidgetResizable(True)
+        # self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # self.sb.sliderMoved.connect(self.test)
 
         # alt键按下
         self.alt_mode = False
@@ -471,8 +482,21 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         QShortcut(QKeySequence("Ctrl+C"), self, self.copyTag)
         QShortcut(QKeySequence("Ctrl+X"), self, self.cutTag)
         QShortcut(QKeySequence("Ctrl+V"), self, self.pasteTag)
+        QShortcut(QKeySequence("Ctrl+Z"), self, self.undo_fun)
+        QShortcut(QKeySequence("Ctrl+Shift+Z"), self, self.redo_fun)
+
 
         self.undostack = QUndoStack()
+        # self.undo, self.redo = self.undostack.undo, self.undostack.redo
+        self.cmdstack = []
+
+    def undo_fun(self):
+        self.undostack.undo()
+        print(self.undostack.count())
+
+    def redo_fun(self):
+        self.undostack.redo()
+
     def test(self):
         print(self.sb.value())
         self.scroll_area.scrollContentsBy(500,self.sb.value())
@@ -591,42 +615,41 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def drawline_pt(self, s, e):
         self.draw = True
+
+        if isinstance(s,str):
+            sname = s
+        else:
+            sname = s.objectName()
+
+        if isinstance(e,str):
+            ename = e
+        else:
+            ename = e.objectName()
+
         # 两点间已有连线,改为反向
-        if e.objectName() in self.lines:
-            if s.objectName() in self.lines[e.objectName()]:
-                if s.objectName() not in self.lines:
-                    self.lines[s.objectName()] = [e.objectName()]
+        if ename in self.lines:
+            if sname in self.lines[ename]:
+                if sname not in self.lines:
+                    self.lines[sname] = [ename]
                 else:
-                    self.lines[s.objectName()].append(e.objectName())
-                self.lines[e.objectName()].remove(s.objectName())
+                    self.lines[sname].append(ename)
+                self.lines[ename].remove(sname)
         # 无s点记录
-        if s.objectName() not in self.lines:
-            self.lines[s.objectName()] = [e.objectName()]
+        if sname not in self.lines:
+            self.lines[sname] = [ename]
         # 有s点记录
         else:
             # 删除现有连线
-            if e.objectName() in self.lines[s.objectName()]:
-                self.lines[s.objectName()].remove(e.objectName())
+            if ename in self.lines[sname]:
+                self.lines[sname].remove(ename)
             # 添加新连线
             else:
-                self.lines[s.objectName()].append(e.objectName())
+                self.lines[sname].append(ename)
         self.update()
 
     def keyPressEvent(self, event):
-        alltag = self.findChildren(Newlabel)
         if event.key() == Qt.Key_Delete:
-            for tag in alltag:
-                if tag.state == 'select':
-                    name = tag.objectName()
-                    if name in self.lines:
-                        self.lines.pop(name)
-                    for k in self.lines:
-                        if name in self.lines[k]:
-                            self.lines[k].remove(name)
-                    # 更新连线
-                    self.update()
-                    # 删除节点
-                    tag.deltag()
+            self.deletaTags()
         elif event.key() == Qt.Key_Alt:
             self.alt_mode = True
 
@@ -739,6 +762,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         self.inittag(x - wx, y - wy)
 
+
     def dropEvent(self, event):
         self.setFocusPolicy(Qt.StrongFocus)
         texts = event.mimeData().text().split('\n')
@@ -755,13 +779,17 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         # 接受事件 将事件转到dropevent
         event.accept()
 
-    def inittag(self, x, y, mode=None, mmode='h'):
+    def inittag(self, x, y, name = None, mode=None, mmode='h'):
         '''
         新建tag
         :param mode: 是否调整坐标
         :param mmode: 坐标调整模式
         :return: 新tag
         '''
+        alltag = self.findChildren(Newlabel)
+        for tag in alltag:
+            if tag.objectName()==name:
+                return 0
         if not mode:
             target = QPoint(x, y)
             alltag = self.findChildren(Newlabel)
@@ -781,7 +809,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     target = QPoint(x, y)
 
         self.changed = True
-        name = 'tag' + str(self.num)
+        if not name:
+            name = 'tag' + str(self.num)
         exec('self.%s = Newlabel(self)' % name)
         exec('self.%s.setGeometry(x - %d, y - %d, %d, %d)' % (name, tagw / 2, tagh * 3 / 2, tagw, tagh))
         exec('self.%s.show()' % name)
@@ -792,6 +821,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         alltag = self.findChildren(Newlabel)
         if len(alltag) > 0:
             self.window.logo.hide()
+
+        if eval('self.%s' % name):
+            tag = eval('self.%s' % name)
+            cmd = UndoInitTag(tag, name, tag.x(), tag.y(),True)
+            # self.cmdstack.append(cmd)
+            self.undostack.push(cmd)
+
         return eval('self.%s' % name)
 
     def newlink(self, tag, event):
@@ -1066,10 +1102,38 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                         self.drawline_pt(news[tag], news[tag_e])
             self.update()
 
-    def deleteTag(self):
-        if self.selects:
-            while self.selects:
-                self.selects[-1].deltag()
+    def deleteTag(self, name):
+        if name:
+            tag = self.findChild(Newlabel,name)
+            tag.deltag()
+        else:
+            if self.selects:
+                while self.selects:
+                    self.selects[-1].deltag()
+
+    def deletaTags(self):
+        alltag = self.findChildren(Newlabel)
+        dlist = {}
+        llist = []
+        for tag in alltag:
+            if tag.state == 'select':
+                dlist[tag.objectName()] = {'x':tag.x(),'y':tag.y()}
+                name = tag.objectName()
+                if name in self.lines:
+                    for end in self.lines[name]:
+                        llist.append([name,end])
+                    self.lines.pop(name)
+                for k in self.lines:
+                    if name in self.lines[k]:
+                        llist.append([k,name])
+                        self.lines[k].remove(name)
+                # 更新连线
+                self.update()
+                # 删除节点
+                tag.deltag()
+        cmd = UndoDelTag(self,dlist,llist,True)
+        self.undostack.push(cmd)
+
 
     def findAndReplace(self):
         findDia = Find_D(self)
