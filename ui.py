@@ -26,10 +26,10 @@ class Ui_MainWindow(object):
         self.centralwidget.setLayout(self.hbox)
 
 
-        self.sb = QScrollBar(self)
-        # self.sb.setMinimum(0.5*self.screenHeight)
-        MainWindow.layout()
-        self.hbox.addWidget(self.sb)
+        # self.sb = QScrollBar(self)
+        # # self.sb.setMinimum(0.5*self.screenHeight)
+        # MainWindow.layout()
+        # self.hbox.addWidget(self.sb)
 
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1941, 37))
@@ -69,6 +69,10 @@ class Ui_MainWindow(object):
         m_file.addAction(self.action_save)#保存
         m_file.addAction(self.action_saveas)#另存为
 
+        self.action_undo = QAction("&撤销", MainWindow)
+        self.action_undo.setObjectName("actionundo")
+        self.action_undo.setToolTip('撤销')
+
         self.action_cut = QAction("&剪切", MainWindow)
         self.action_cut.setObjectName("actioncut")
         self.action_cut.setToolTip('剪切')
@@ -94,6 +98,8 @@ class Ui_MainWindow(object):
         self.action_selectall.setToolTip('全选')
 
         m_edit = self.menubar.addMenu('编辑')
+        m_edit.addAction(self.action_undo) # 撤销
+        m_edit.addSeparator()
         m_edit.addAction(self.action_cut)  # 剪切
         m_edit.addAction(self.action_copy)  # 复制
         m_edit.addAction(self.action_paste)  # 粘贴

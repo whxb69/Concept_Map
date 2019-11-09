@@ -224,6 +224,7 @@ class Newlabel(QLineEdit):
                     self.temp.Bstate = True
                 else:
                     self.temp.setStyleSheet('None')
+                self.temp.setObjectName(self.objectName())
                 self.setObjectName('temp')
                 self.state = None
                 self.stateChanged.emit(self.state)
@@ -301,15 +302,22 @@ class Newlabel(QLineEdit):
                 else:
                     # 非连接 移动tag
                     if len(self.window.selects) > 1:
+                        tlist = {}
                         for tag in self.window.selects:
+                            tlist[tag.temp.objectName()] = {'obj':tag.temp,'x':tag.temp.x(),'y':tag.temp.y()}
                             tag.temp.move(tag.x(), tag.y())
                             tag.temp.stateChanged.emit(None)
                             if tag.temp.Bstate:
                                 tag.temp.setStyleSheet(self.temp.sheet['B'])
+
                     else:
+                        tlist = {self.temp.objectName():{'obj':self.temp,'x':self.temp.x(),'y':self.temp.y()}}
                         self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
                         self.tgt = None
                         self.mm = False
+
+                    cmd = UndoMove(self.window, tlist, True)
+                    self.window.undostack.push(cmd)
 
                 self.temp.stateChanged.emit(None)
                 if self.temp.Bstate:
@@ -355,14 +363,6 @@ class Newlabel(QLineEdit):
             self.stateChanged.emit(self.state)
 
     def deltag(self,temp=False):
-        # if not temp:
-        #     try:
-        #         cmd = UndoDelTag(self.window, {self.objectName():{'x':self.x(), 'y':self.y()}},True)
-        #     # self.window.cmdstack.append(cmd)
-        #         self.window.undostack.push(cmd)
-        #     except:
-        #         pass
-
         keys = []  # 待删除arrows索引
         if self.window.arrows:
             for key, value in self.window.arrows.items():
@@ -453,6 +453,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_new.triggered.connect(self.newfile)
 
         # 编辑菜单
+        self.action_undo.triggered.connect(self.undo_fun)
         self.action_cut.triggered.connect(self.cutTag)
         self.action_copy.triggered.connect(self.copyTag)
         self.action_paste.triggered.connect(self.pasteTag)
@@ -461,7 +462,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_selectall.triggered.connect(self.selectAll)
 
         # 标签菜单
-        self.action_newtag.triggered.connect(lambda: self.inittag(self.width() / 2, self.height() / 2))
+        self.action_newtag.triggered.connect(lambda: self._inittag(self.width() / 2, self.height() / 2))
         self.action_newtags.triggered.connect(self.newtags)
 
         # tag拖动框
@@ -637,6 +638,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         # 无s点记录
         if sname not in self.lines:
             self.lines[sname] = [ename]
+            cmd = UndoDrawLine(self, sname, ename, True)
+            self.undostack.push(cmd)
         # 有s点记录
         else:
             # 删除现有连线
@@ -645,6 +648,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             # 添加新连线
             else:
                 self.lines[sname].append(ename)
+                cmd = UndoDrawLine(self,sname,ename,True)
+                self.undostack.push(cmd)
         self.update()
 
     def keyPressEvent(self, event):
@@ -760,7 +765,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         x = event.globalX()
         y = event.globalY()
 
-        self.inittag(x - wx, y - wy)
+        self._inittag(x - wx, y - wy)
+
 
 
     def dropEvent(self, event):
@@ -778,6 +784,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.window.setCursor(QCursor(Qt.DragCopyCursor))
         # 接受事件 将事件转到dropevent
         event.accept()
+
+    def _inittag(self, x, y, name = None, mode=None, mmode='h'):
+        tag = self.inittag(x,y,name,mode,mmode)
+        tlist = {tag.objectName(): {'obj': tag, 'x': tag.x(), 'y': tag.y()}}
+        cmd = UndoInitTag(self.window, tlist, True)
+        self.undostack.push(cmd)
+
+
 
     def inittag(self, x, y, name = None, mode=None, mmode='h'):
         '''
@@ -824,9 +838,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         if eval('self.%s' % name):
             tag = eval('self.%s' % name)
-            cmd = UndoInitTag(tag, name, tag.x(), tag.y(),True)
-            # self.cmdstack.append(cmd)
-            self.undostack.push(cmd)
+
 
         return eval('self.%s' % name)
 
@@ -1063,6 +1075,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         # 剪切到粘贴
         if self.cuts:
             news = {}  # 存储新tag
+            tlist = {}
             # 复制tag
             for tag in self.cuts:
                 new = self.inittag(self.width() / 2 + self.cuts[tag]['x'],
@@ -1070,6 +1083,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                                    mmode='x')
 
                 new.stateChanged.emit(None)
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y()}
                 new.show()
                 news[tag] = new
             # 复制连线信息
@@ -1078,10 +1092,13 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     for tag_e in self.cut_lines[tag]:
                         self.drawline_pt(news[tag], news[tag_e])
             self.update()
+            cmd = UndoInitTag(self,tlist,True)
+            self.undostack.push(cmd)
 
         # 复制到粘贴
         if self.copys:
             news = {}  # 存储新tag
+            tlist = {}
             # 复制tag
             for tag in self.copys:
                 new = self.inittag(self.width() / 2 + self.copys[tag]['x'],
@@ -1093,6 +1110,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 new.Bstate = self.copys[tag]['Bstate']
 
                 new.stateChanged.emit(None)
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y()}
                 new.show()
                 news[tag] = new
             # 复制连线信息
@@ -1101,6 +1119,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     for tag_e in self.copy_lines[tag]:
                         self.drawline_pt(news[tag], news[tag_e])
             self.update()
+            cmd = UndoInitTag(self, tlist, True)
+            self.undostack.push(cmd)
+            #TODO :粘贴需撤回两次
 
     def deleteTag(self, name):
         if name:
@@ -1211,8 +1232,14 @@ class New_D(QDialog, New_Form):
 
     def news(self):
         num = self.spinBox.value()
+        tlist = {}
         for i in range(num):
-            self.window.inittag(self.window.width()/2,self.window.height()/2)
+            tag = self.window.inittag(self.window.width()/2,self.window.height()/2)
+            tlist[tag.objectName()]={'obj': tag, 'x': tag.x(), 'y': tag.y()}
+
+        cmd = UndoInitTag(self.window,tlist,True)
+        self.window.undostack.push(cmd)
+
         self.close()
 
 
