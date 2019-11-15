@@ -452,6 +452,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.lines_temp = {}  # 剪切时暂存line数据
         self.setAcceptDrops(True)
 
+        self.undostack = QUndoStack()
+        self.action_redo = self.undostack.createRedoAction(self)
+
         # 文件菜单
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
         self.action_saveas.triggered.connect(self.saveasfile)
@@ -459,6 +462,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_new.triggered.connect(self.newfile)
 
         # 编辑菜单
+        self.menuBar().addAction(self.action_redo)
         self.action_undo.triggered.connect(self.undo_fun)
         self.action_cut.triggered.connect(self.cutTag)
         self.action_copy.triggered.connect(self.copyTag)
@@ -493,8 +497,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         QShortcut(QKeySequence("Ctrl+Shift+Z"), self, self.redo_fun)
 
 
-        self.undostack = QUndoStack()
-        # self.undo, self.redo = self.undostack.undo, self.undostack.redo
+        
         self.cmdstack = []
 
     def undo_fun(self):
@@ -504,7 +507,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         print('-'*20)        
 
     def redo_fun(self):
+        print(self.undostack.currentIndex())
         self.undostack.redo()
+        
 
     def test(self):
         print(self.sb.value())
@@ -522,7 +527,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         new = menu.addAction('&新建')
-        new.triggered.connect(lambda: self.inittag(event.x(), event.y()))
+        new.triggered.connect(lambda: self._inittag(event.x(), event.y()))
         # delete = menu.addAction('&删除')
         menu.addSeparator()
         # cut = menu.addAction('&剪切')
@@ -711,6 +716,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             if x >= self.arrows[key][0] and x <= self.arrows[key][1] and \
                     y <= self.arrows[key][2] and y >= self.arrows[key][3]:
                 new = self.window.inittag(x, y)
+                tinfo = {'obj':new,'x':x,'y':y,'name':new.objectName()}
+                cmd = UndoArrowtag(self,tinfo,self.arrows[key][-2],self.arrows[key][-1],True)
+                self.undostack.push(cmd)
                 new.show()
                 self.drawline_pt(self.arrows[key][-2], new)
                 self.drawline_pt(new, self.arrows[key][-1])
@@ -780,13 +788,18 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def dropEvent(self, event):
         self.setFocusPolicy(Qt.StrongFocus)
         texts = event.mimeData().text().split('\n')
+        tlist = {}
         for text in texts:
             new = self.inittag(event.pos().x(), event.pos().y())
+            tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y()}
             new.setText(text)
             if self.alt_mode:
                 new.Bstate = True
             new.stateChanged.emit(None)
             new.show()
+        cmd = UndoInitTag(self,tlist,True)
+        self.undostack.push(cmd)
+
 
     def dragEnterEvent(self, event):
         self.window.setCursor(QCursor(Qt.DragCopyCursor))
@@ -1212,6 +1225,7 @@ class Dlabel(QLabel):
         text = event.mimeData().text()
         texts = text.split('\n')
         # tag生成
+        tlist = {}
         if self.objectName() == 'tag':
             for index, tag in enumerate(texts):
                 new = self.window.inittag(self.width() + tagw / 2, self.y() + (index + 1) * 80, mmode='w')
@@ -1221,6 +1235,9 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y(),'B':True}
+            cmd = UndoInitTag(self.window,tlist,True)
+            self.window.undostack.push(cmd)
         # rel生成
         else:
             for index, tag in enumerate(texts):
@@ -1232,6 +1249,9 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y()}
+            cmd = UndoInitTag(self.window,tlist,True)
+            self.window.undostack.push(cmd)
 
     def dragLeaveEvent(self, event):
         self.setStyleSheet("border-width:0px;border-style: None; "
