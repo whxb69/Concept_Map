@@ -15,10 +15,12 @@ class UndoInitTag(QUndoCommand):
     def redo(self):
         if not self._first:
             for name in self._tlist:
-                tag = self._window.inittag(self._tlist['x'], self._tlist['y'], name=name)
+                tag = self._window.inittag(self._tlist[name]['x'], self._tlist[name]['y'], name=name)
                 if self._tlist[name]['B']:
                     tag.Bstate=True
                     tag.stateChanged.emit('None')
+        else:
+            self._first = False
 
 #删除tag 输入tag list
 class UndoDelTag(QUndoCommand):
@@ -41,6 +43,8 @@ class UndoDelTag(QUndoCommand):
         if not self._first:
             for name in self._dlist:
                 self._window.deleteTag(name)
+        else:
+            self._first = False
 
 #触碰连线操作 其余附带连线不包括
 class UndoDrawLine(QUndoCommand):

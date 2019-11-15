@@ -454,6 +454,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         self.undostack = QUndoStack()
         self.action_redo = self.undostack.createRedoAction(self)
+        # self.action_redo.setShortcut("Ctrl+Shift+Z")
 
         # 文件菜单
         self.action_save.triggered.connect(lambda: self.savefile(self.filename))
@@ -462,7 +463,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.action_new.triggered.connect(self.newfile)
 
         # 编辑菜单
-        self.menuBar().addAction(self.action_redo)
+        # self.menuBar().addAction(self.action_redo)
         self.action_undo.triggered.connect(self.undo_fun)
         self.action_cut.triggered.connect(self.cutTag)
         self.action_copy.triggered.connect(self.copyTag)
@@ -494,7 +495,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         QShortcut(QKeySequence("Ctrl+X"), self, self.cutTag)
         QShortcut(QKeySequence("Ctrl+V"), self, self.pasteTag)
         QShortcut(QKeySequence("Ctrl+Z"), self, self.undo_fun)
-        QShortcut(QKeySequence("Ctrl+Shift+Z"), self, self.redo_fun)
+        # QShortcut(QKeySequence("Ctrl+Shift+Z"), self, self.redo_fun)
 
 
         
@@ -508,7 +509,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def redo_fun(self):
         print(self.undostack.currentIndex())
-        self.undostack.redo()
+        self.action_redo
         
 
     def test(self):
@@ -791,7 +792,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         tlist = {}
         for text in texts:
             new = self.inittag(event.pos().x(), event.pos().y())
-            tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y()}
+            tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(),'B':new.Bstate}
             new.setText(text)
             if self.alt_mode:
                 new.Bstate = True
@@ -808,7 +809,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def _inittag(self, x, y, name = None, mode=None, mmode='h'):
         tag = self.inittag(x,y,name,mode,mmode)
-        tlist = {tag.objectName(): {'obj': tag, 'x': tag.x(), 'y': tag.y()}}
+        tlist = {tag.objectName(): {'obj': tag, 'x': tag.x(), 'y': tag.y()},'B':tag.Bstate}
         cmd = UndoInitTag(self.window, tlist, True)
         self.undostack.push(cmd)
 
@@ -1148,7 +1149,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 new.Bstate = self.copys[tag]['Bstate']
 
                 new.stateChanged.emit(None)
-                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y()}
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y(),'B':new.Bstate}
                 new.show()
                 news[tag] = new
             # 复制连线信息
@@ -1249,7 +1250,7 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
-                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y()}
+                tlist[new.objectName()] = {'obj':new,'x':new.x(),'y':new.y(),'B':new.Bstate}
             cmd = UndoInitTag(self.window,tlist,True)
             self.window.undostack.push(cmd)
 
@@ -1279,7 +1280,7 @@ class New_D(QDialog, New_Form):
         tlist = {}
         for _ in range(num):
             tag = self.window.inittag(self.window.width()/2,self.window.height()/2)
-            tlist[tag.objectName()]={'obj': tag, 'x': tag.x(), 'y': tag.y()}
+            tlist[tag.objectName()]={'obj': tag, 'x': tag.x(), 'y': tag.y(),'B':new.Bstate}
 
         cmd = UndoInitTag(self.window,tlist,True)
         self.window.undostack.push(cmd)
