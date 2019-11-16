@@ -97,16 +97,7 @@ class Ui_MainWindow(object):
         self.action_selectall.setObjectName("actionselectall")
         self.action_selectall.setToolTip('全选')
 
-        m_edit = self.menubar.addMenu('编辑')
-        m_edit.addAction(self.action_undo) # 撤销
-        m_edit.addSeparator()
-        m_edit.addAction(self.action_cut)  # 剪切
-        m_edit.addAction(self.action_copy)  # 复制
-        m_edit.addAction(self.action_paste)  # 粘贴
-        m_edit.addSeparator()
-        m_edit.addAction(self.action_delete)  # 删除
-        m_edit.addAction(self.action_find)  # 查找
-        m_edit.addAction(self.action_selectall)  # 全选
+
 
         self.action_newtag = QAction("&新建标签", MainWindow)
         self.action_newtag.setObjectName("actionnewtag")
@@ -116,9 +107,7 @@ class Ui_MainWindow(object):
         self.action_newtags.setObjectName("actionnewtags")
         self.action_newtags.setToolTip('批量新建')
 
-        m_note = self.menubar.addMenu('标签')
-        m_note.addAction(self.action_newtag)
-        m_note.addAction(self.action_newtags)
+
 
 
 
