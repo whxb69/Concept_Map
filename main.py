@@ -518,9 +518,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def undo_fun(self):
         self.undostack.undo()
-        for i in range(self.undostack.count()):
-            print(self.undostack.command(i))
-        print('-' * 20)
+        # for i in range(self.undostack.count()):
+        #     print(self.undostack.command(i))
+        # print('-' * 20)
 
     def redo_fun(self):
         print(self.undostack.currentIndex())

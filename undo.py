@@ -20,7 +20,7 @@ class UndoInitTag(QUndoCommand):
                 tag = self._window.inittag(self._tlist[name]['x'], self._tlist[name]['y'], name=name)
                 if self._tlist[name]['B']:
                     tag.Bstate = True
-                    tag.stateChanged.emit('None')
+                    tag.stateChanged.emit(None)
             if self._llist:
                 for start,end in self._llist:
                     self._window.drawline_pt(start,end)
@@ -99,7 +99,7 @@ class UndoPaste(QUndoCommand):
                     tag = self._window.inittag(self._tlist[name]['x'], self._tlist[name]['y'], name=name)
                     if self._tlist[name]['B']:
                         tag.Bstate = True
-                        tag.stateChanged.emit('None')
+                        tag.stateChanged.emit(None)
                 for start, end in self._llist:
                     self._window.drawline_pt(start, end)
                 self._window.update()
