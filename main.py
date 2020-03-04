@@ -27,27 +27,39 @@ class Newlabel(QLineEdit):
         self.stateChanged.connect(self.stateChangeEvent)
         self.state = 'edit'
         self.setText('New Note')
-        self.sheet = {'None': "border-width:0px;border-style: None; "
-                              "border-radius: 15px;background-color:rgb(240,240,240)",
-                      'edit': "border-width:2px;border-style: solid; "
-                              "border-radius: 15px;border-color: rgb(150, 100, 0);",
-                      'Bedit': "border: 1px solid red,4px solid black",
-                      'in': "border-width:1.5px;border-style: dashed; "
-                            "border-radius: 15px;border-color: rgb(0, 0, 0);"
-                            "background-color:rgb(240,240,240)",
-                      'B': "border-width:3px;border-style: solid; "
-                           "border-radius: 15px;border-color: rgb(0, 0, 0);"
-                           "background-color:rgb(240,240,240)",
-                      'select': "border-width:3px;border-style: solid; "
-                                "border-radius: 15px;border-color: rgb(150, 100, 0);",
-                      'Bselect': "border: 3px solid black;"
-                                 "outline: 5px solid red;",
-                      'crash': "border-width: 0px;border-radius: 15px; border-style: solid;"
-                               "border-color: rgb(0, 0, 0);background-color: gray;",
-                      'Bcrash': "border-width: 5px;border-radius: 15px; border-style: solid;"
-                                "border-color: rgb(0, 0, 0);background-color: gray;",
-                      'move': "border-width:0px;border-radius: 15px;"
-                              "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)"}
+        self.sheet = {
+            'None':
+            "border-width:0px;border-style: None; "
+            "border-radius: 15px;background-color:rgb(240,240,240)",
+            'edit':
+            "border-width:2px;border-style: solid; "
+            "border-radius: 15px;border-color: rgb(150, 100, 0);",
+            'Bedit':
+            "border: 1px solid red,4px solid black",
+            'in':
+            "border-width:1.5px;border-style: dashed; "
+            "border-radius: 15px;border-color: rgb(0, 0, 0);"
+            "background-color:rgb(240,240,240)",
+            'B':
+            "border-width:3px;border-style: solid; "
+            "border-radius: 15px;border-color: rgb(0, 0, 0);"
+            "background-color:rgb(240,240,240)",
+            'select':
+            "border-width:3px;border-style: solid; "
+            "border-radius: 15px;border-color: rgb(150, 100, 0);",
+            'Bselect':
+            "border: 3px solid black;"
+            "outline: 5px solid red;",
+            'crash':
+            "border-width: 0px;border-radius: 15px; border-style: solid;"
+            "border-color: rgb(0, 0, 0);background-color: gray;",
+            'Bcrash':
+            "border-width: 5px;border-radius: 15px; border-style: solid;"
+            "border-color: rgb(0, 0, 0);background-color: gray;",
+            'move':
+            "border-width:0px;border-radius: 15px;"
+            "border-color: rgb(0, 0, 0);background-color:rgb(240,240,240)"
+        }
         self.setStyleSheet(self.sheet['edit'])
         # self.setAcceptDrops(True)
         # self.setDragEnabled(True)
@@ -182,15 +194,22 @@ class Newlabel(QLineEdit):
                     if hasattr(tag, 'temp'):
                         self.window.move_head = tag
             else:
-                if len(self.window.selects) > 1 and self == self.window.move_head:
+                if len(self.window.selects
+                       ) > 1 and self == self.window.move_head:
                     if not self.window.selects_dis:
                         for tag in self.window.selects:
-                            self.window.selects_dis[tag] = {'x': tag.x() - self.x(), 'y': tag.y() - self.y()}
+                            self.window.selects_dis[tag] = {
+                                'x': tag.x() - self.x(),
+                                'y': tag.y() - self.y()
+                            }
                     for tag in self.window.selects:
                         if tag != self:
                             # 触发位移时定义占位tag
                             if not hasattr(tag, 'temp'):
-                                tag.temp = tag.window.inittag(tag.x() + tagw / 2, tag.y() + tagh * 3 / 2, mode='temp')
+                                tag.temp = tag.window.inittag(
+                                    tag.x() + tagw / 2,
+                                    tag.y() + tagh * 3 / 2,
+                                    mode='temp')
                                 tag.temp.setObjectName(tag.objectName())
                                 tag.temp.setText(tag.text())
                                 tag.state = None
@@ -204,17 +223,20 @@ class Newlabel(QLineEdit):
                             tag.state = None
                             tag.stateChanged.emit(tag.state)
 
-                            tag.move(self.x() + self.window.selects_dis[tag]['x'],
-                                     self.y() + self.window.selects_dis[tag]['y'])
+                            tag.move(
+                                self.x() + self.window.selects_dis[tag]['x'],
+                                self.y() + self.window.selects_dis[tag]['y'])
 
     def mouseMoveEvent(self, event):
         if self.state == 'edit' and not self.window.selects:
             super().mouseMoveEvent(event)
         if self.press and self.state != 'edit':
-            self.mm = True
+            self.mm = True#移动模式开启
             if not hasattr(self, 'temp'):
                 # 触发位移时定义占位tag
-                self.temp = self.window.inittag(self.x() + tagw / 2, self.y() + tagh * 3 / 2, mode='temp')
+                self.temp = self.window.inittag(self.x() + tagw / 2,
+                                                self.y() + tagh * 3 / 2,
+                                                mode='temp')
                 self.temp.setObjectName(self.objectName())
                 self.temp.setText(self.text())
                 self.temp.setReadOnly(True)
@@ -239,9 +261,13 @@ class Newlabel(QLineEdit):
             for tag in alltag:
                 tx = tag.x()
                 ty = tag.y()
-                rect = QRect(QPoint(tx, ty), QPoint(tx + 3 / 2 * tag.width(), ty + 3 / 2 * tag.height()))
-                point = QPoint(event.globalX() - self.window.x(),
-                               event.globalY() - self.window.y() - tag.height() / 2)
+                rect = QRect(
+                    QPoint(tx, ty),
+                    QPoint(tx + 3 / 2 * tag.width(),
+                           ty + 3 / 2 * tag.height()))
+                point = QPoint(
+                    event.globalX() - self.window.x(),
+                    event.globalY() - self.window.y() - tag.height() / 2)
                 if rect.contains(point):
                     tgt_n = [self.temp, self]
                     tgt_n.extend(self.window.selects)  # 不可做tgt集合
@@ -290,14 +316,20 @@ class Newlabel(QLineEdit):
                 if self.tgt:
                     # 连接后画线
                     llist = []
+                    #多对一连线
                     if self.window.selects:
                         for tag in self.window.selects:
                             self.window.drawline_pt(tag.temp, self.tgt)
-                            llist.append([tag.temp.objectName(), self.tgt.objectName()])
+                            llist.append(
+                                [tag.temp.objectName(),
+                                 self.tgt.objectName()])
                         cmd = UndoDrawLine(self.window, llist, True)
+                    #一对一连线
                     else:
                         self.window.drawline_pt(self.temp, self.tgt)
-                        llist.append([self.temp.objectName(), self.tgt.objectName()])
+                        llist.append(
+                            [self.temp.objectName(),
+                             self.tgt.objectName()])
                         cmd = UndoDrawLine(self.window, llist, True)
                     self.window.undostack.push(cmd)
                     # 设置边框
@@ -310,15 +342,31 @@ class Newlabel(QLineEdit):
                     if len(self.window.selects) > 1:
                         tlist = {}
                         for tag in self.window.selects:
-                            tlist[tag.temp.objectName()] = {'obj': tag.temp, 'x': tag.temp.x(), 'y': tag.temp.y(),'nx':tag.x(),'ny':tag.y()}
+                            tlist[tag.temp.objectName()] = {
+                                'obj': tag.temp,
+                                'x': tag.temp.x(),
+                                'y': tag.temp.y(),
+                                'nx': tag.x(),
+                                'ny': tag.y()
+                            }
                             tag.temp.move(tag.x(), tag.y())
                             tag.temp.stateChanged.emit(None)
                             if tag.temp.Bstate:
                                 tag.temp.setStyleSheet(self.temp.sheet['B'])
 
                     else:
-                        tlist = {self.temp.objectName(): {'obj': self.temp, 'x': self.temp.x(), 'y': self.temp.y(),'nx':self.x(),'ny':self.y()}}
-                        self.temp.move(x - wx - tagw / 2, y - wy - tagh * 3 / 2)
+                        #tilst为撤销需要数据
+                        tlist = {
+                            self.temp.objectName(): {
+                                'obj': self.temp,
+                                'x': self.temp.x(),
+                                'y': self.temp.y(),
+                                'nx': self.x(),
+                                'ny': self.y()
+                            }
+                        }
+                        self.temp.move(x - wx - tagw / 2,
+                                       y - wy - tagh * 3 / 2)
                         self.tgt = None
                         self.mm = False
 
@@ -328,13 +376,14 @@ class Newlabel(QLineEdit):
                 self.temp.stateChanged.emit(None)
                 if self.temp.Bstate:
                     self.temp.setStyleSheet(self.temp.sheet['B'])
-                self.deltag(True)
+                self.deltag(True)#删除占位tag
             # 删除占位tag
-            tagToDel = self.window.findChildren(Newlabel, 'temp')
+            tagToDel = self.window.findChildren(Newlabel, 'temp')  #找到待删除tag
             if tagToDel:
                 for tag in tagToDel:
                     tag.deltag(True)
             self.window.update()
+            #多选情况 重置select列表
             if self.window.selects != [self] \
                     and self.state == 'select':
                 self.window.selects = []
@@ -369,14 +418,17 @@ class Newlabel(QLineEdit):
             self.stateChanged.emit(self.state)
 
     def deltag(self, temp=False):
+        #删除连线数据
         if self.objectName() in self.window.lines:
             self.window.lines.pop(self.objectName())
+        #删除箭头数据
         keys = []  # 待删除arrows索引
         if self.window.arrows:
             for key, value in self.window.arrows.items():
                 if self in value:
                     keys.append(key)
         [self.window.arrows.pop(key) for key in keys]
+        #清清除select列表信息
         if self in self.window.selects:
             self.window.selects.remove(self)
         self.deleteLater()
@@ -386,7 +438,8 @@ class Newlabel(QLineEdit):
         # 更新logo状态
         alltag = self.window.findChildren(Newlabel)
         if len(alltag) == 0:
-            self.window.logo.move(self.window.width() * 0.4, self.window.height() * 7 / 16)
+            self.window.logo.move(self.window.width() * 0.4,
+                                  self.window.height() * 7 / 16)
             self.window.logo.show()
 
     def del_fun(self):
@@ -455,11 +508,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setAcceptDrops(True)
 
         self.undostack = QUndoStack()
-        self.action_redo = self.undostack.createRedoAction(self,"重做")
+        self.action_redo = self.undostack.createRedoAction(self, "重做")
         self.action_redo.setShortcut("Ctrl+Shift+Z")
 
         # 文件菜单
-        self.action_save.triggered.connect(lambda: self.savefile(self.filename))
+        self.action_save.triggered.connect(
+            lambda: self.savefile(self.filename))
         self.action_saveas.triggered.connect(self.saveasfile)
         self.action_open.triggered.connect(self.openfile)
         self.action_new.triggered.connect(self.newfile)
@@ -490,14 +544,17 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         m_note.addAction(self.action_newtag)
         m_note.addAction(self.action_newtags)
 
-        self.action_newtag.triggered.connect(lambda: self._inittag(self.width() / 2, self.height() / 2))
+        self.action_newtag.triggered.connect(
+            lambda: self._inittag(self.width() / 2,
+                                  self.height() / 2))
         self.action_newtags.triggered.connect(self.newtags)
 
         # tag拖动框
         self.label_tag = Dlabel(self)
         self.label_tag.setObjectName('tag')
         self.label_tag.setGeometry(
-            QtCore.QRect(0, 0.25 * self.screenHeight, 20, 0.5 * self.screenHeight))
+            QtCore.QRect(0, 0.25 * self.screenHeight, 20,
+                         0.5 * self.screenHeight))
 
         # rel拖动框
         self.label_rel = Dlabel(self)
@@ -563,7 +620,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             messageBox = QMessageBox()
             messageBox.setWindowTitle('Concept Map')
             messageBox.setText('是否保存对文件的更改')
-            messageBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            messageBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No
+                                          | QMessageBox.Cancel)
             buttonY = messageBox.button(QMessageBox.Yes)
             buttonY.setText('是')
             buttonN = messageBox.button(QMessageBox.No)
@@ -595,8 +653,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     ss = self.window.findChild(QLineEdit, s)
                     ee = self.window.findChild(QLineEdit, l)
                     if ss and ee:
-                        line = QLineF(ss.x() + ss.width() / 2, ss.y() + ss.height() / 2,
-                                      ee.x() + ee.width() / 2, ee.y() + ee.height() / 2)
+                        line = QLineF(ss.x() + ss.width() / 2,
+                                      ss.y() + ss.height() / 2,
+                                      ee.x() + ee.width() / 2,
+                                      ee.y() + ee.height() / 2)
                         line.setLength(line.length())
                         pen.setPen(QPen(Qt.darkRed, 2, Qt.DashLine))
                         pen.drawLine(line)
@@ -606,8 +666,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             if self.press_s and self.press and self.press_e:
                 alltag = self.findChildren(Newlabel)
                 for index, tag in enumerate(alltag):
-                    area = QRect(QPoint(tag.x(), tag.y()),
-                                 QPoint(tag.x() + tag.width(), tag.y() + tag.height()))
+                    area = QRect(
+                        QPoint(tag.x(), tag.y()),
+                        QPoint(tag.x() + tag.width(),
+                               tag.y() + tag.height()))
                     if area.contains(self.press_s):
                         return None
                 pen.setPen(QPen(Qt.black, 1, Qt.DashLine))
@@ -649,7 +711,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def drawline_pt(self, s, e):
         self.draw = True
-
+        #检查传入的参数 可能是tag或tag对应objectName 均转换为objectName
         if isinstance(s, str):
             sname = s
         else:
@@ -700,7 +762,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             # 重置移动数据
             self.selects = []
             self.selects_dis = {}
-            self.move_head = None
+            self.move_head = None    #群体位移时的主触发tag
 
             alltag = self.findChildren(Newlabel)
             for tag in alltag:
@@ -732,12 +794,15 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     y <= self.arrows[key][2] and y >= self.arrows[key][3]:
                 new = self.window.inittag(x, y)
                 tinfo = {'obj': new, 'x': x, 'y': y, 'name': new.objectName()}
-                cmd = UndoArrowtag(self, tinfo, self.arrows[key][-2].objectName(), self.arrows[key][-1].objectName(), True)
+                cmd = UndoArrowtag(self, tinfo,
+                                   self.arrows[key][-2].objectName(),
+                                   self.arrows[key][-1].objectName(), True)
                 self.undostack.push(cmd)
                 new.show()
                 self.drawline_pt(self.arrows[key][-2], new)
                 self.drawline_pt(new, self.arrows[key][-1])
-                self.lines[self.arrows[key][-2].objectName()].remove(self.arrows[key][-1].objectName())
+                self.lines[self.arrows[key][-2].objectName()].remove(
+                    self.arrows[key][-1].objectName())
                 self.arrows.pop(key)
                 return None
 
@@ -800,13 +865,19 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         self._inittag(x - wx, y - wy)
 
+    #拖放生成新标签
     def dropEvent(self, event):
         self.setFocusPolicy(Qt.StrongFocus)
         texts = event.mimeData().text().split('\n')
         tlist = {}
         for text in texts:
             new = self.inittag(event.pos().x(), event.pos().y())
-            tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(),'B': new.Bstate}
+            tlist[new.objectName()] = {
+                'obj': new,
+                'x': new.x(),
+                'y': new.y(),
+                'B': new.Bstate
+            }
             new.setText(text)
             if self.alt_mode:
                 new.Bstate = True
@@ -822,7 +893,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
     def _inittag(self, x, y, name=None, mode=None, mmode='h'):
         tag = self.inittag(x, y, name, mode, mmode)
-        tlist = {tag.objectName(): {'obj': tag, 'x': tag.x(), 'y': tag.y(), 'B': tag.Bstate}}
+        tlist = {
+            tag.objectName(): {
+                'obj': tag,
+                'x': tag.x(),
+                'y': tag.y(),
+                'B': tag.Bstate
+            }
+        }
         cmd = UndoInitTag(self.window, tlist, first=True)
         self.undostack.push(cmd)
 
@@ -841,8 +919,10 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             target = QPoint(x, y)
             alltag = self.findChildren(Newlabel)
             for tag in alltag:
-                area = QRect(QPoint(tag.x(), tag.y()),
-                             QPoint(tag.x() + tag.width(), tag.y() + tag.height() * 2))
+                area = QRect(
+                    QPoint(tag.x(), tag.y()),
+                    QPoint(tag.x() + tag.width(),
+                           tag.y() + tag.height() * 2))
                 if area.contains(target):
                     if mmode == 'w':
                         x += tagw
@@ -859,7 +939,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if not name:
             name = 'tag' + str(self.num)
         exec('self.%s = Newlabel(self)' % name)
-        exec('self.%s.setGeometry(x - %d, y - %d, %d, %d)' % (name, tagw / 2, tagh * 3 / 2, tagw, tagh))
+        exec('self.%s.setGeometry(x - %d, y - %d, %d, %d)' %
+             (name, tagw / 2, tagh * 3 / 2, tagw, tagh))
         exec('self.%s.show()' % name)
         exec('self.%s.setObjectName("%s")' % (name, name))
         self.nodes[self.num] = {}
@@ -887,7 +968,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 self.drawline_pt(tag, newtag)
                 llist.append(tag.objectName())
 
-        ninfo = {'name':newtag.objectName(),'x':newtag.x(),'y':newtag.y()}
+        ninfo = {'name': newtag.objectName(), 'x': newtag.x(), 'y': newtag.y()}
         cmd = UndoNewlink(self, ninfo, llist, True)
         self.undostack.push(cmd)
 
@@ -895,13 +976,15 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
     def saveasfile(self):
         self.filename = self.savefile()
         if self.filename:
-            self.setWindowTitle("Concept map - " + os.path.basename(self.filename))
+            self.setWindowTitle("Concept map - " +
+                                os.path.basename(self.filename))
         return self.filename
 
     # 保存
     def savefile(self, filename=None):
         if not filename:
-            FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "", "CM Files(*.xml)")
+            FileName, _ = QFileDialog.getSaveFileName(self, "保存概念图", "",
+                                                      "CM Files(*.xml)")
             if not FileName:
                 return None
         else:
@@ -912,12 +995,16 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
 
         # 提取信息
         for index, tag in enumerate(alltag):
-            self.nodes[tag.objectName()] = {'Info': {'Width': str(tag.width()),
-                                                     'FontSize': str(tag.fontInfo().pointSize()),
-                                                     'ID': tag.objectName(),
-                                                     'Position': ('%d,%d') % (tag.pos().x(), tag.pos().y()),
-                                                     'Bstate': str(tag.Bstate)},
-                                            'string': tag.text()}
+            self.nodes[tag.objectName()] = {
+                'Info': {
+                    'Width': str(tag.width()),
+                    'FontSize': str(tag.fontInfo().pointSize()),
+                    'ID': tag.objectName(),
+                    'Position': ('%d,%d') % (tag.pos().x(), tag.pos().y()),
+                    'Bstate': str(tag.Bstate)
+                },
+                'string': tag.text()
+            }
             if tag.objectName() in self.lines:
                 cons = ','.join(self.lines[tag.objectName()])
                 self.nodes[tag.objectName()]['connects'] = cons
@@ -943,6 +1030,7 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         self.setWindowTitle('Concept map - ' + os.path.basename(FileName))
         return FileName
 
+    #打开文件
     def openfile(self):
         alltag = self.window.findChildren(Newlabel)
         if len(alltag) == 0:  # 当前无标签 在原窗口打开
@@ -977,7 +1065,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                         return 0
 
             new.filename = FileName
-            new.setWindowTitle("Concept map - " + os.path.basename(new.filename))
+            new.setWindowTitle("Concept map - " +
+                               os.path.basename(new.filename))
 
         tree = ET.parse(FileName)
         # 读取点数据
@@ -985,7 +1074,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         for node in nodes:
             info = node.attrib
             x, y = info['Position'].split(',')
-            tag = new.inittag(int(float(x)) + tagw / 2, int(float(y)) + (tagh * 3 / 2))  # 适应正常初始化，添加偏移量
+            tag = new.inittag(
+                int(float(x)) + tagw / 2,
+                int(float(y)) + (tagh * 3 / 2))  # 适应正常初始化，添加偏移量
 
             nid = info['ID']
             if 'tag' not in nid:
@@ -1014,7 +1105,9 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                         for c in cons:
                             if '-' in c:
                                 sn, en = [int(n) for n in c.split('-')]
-                                ns = ['tag' + str(n) for n in range(sn, en + 1)]
+                                ns = [
+                                    'tag' + str(n) for n in range(sn, en + 1)
+                                ]
                                 temp_n += ns
                             else:
                                 temp_n.append('tag' + c)
@@ -1031,7 +1124,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                     tag.Bstate = True
                     tag.setStyleSheet(tag.sheet['B'])
             except:
-                if node.find('Appearance').find('Border').attrib['Weight'] != '0':
+                if node.find('Appearance').find(
+                        'Border').attrib['Weight'] != '0':
                     tag.Bstate = True
                     tag.setStyleSheet(tag.sheet['B'])
 
@@ -1042,12 +1136,14 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         new.update()
         new.show()
 
+    #新建文件
     def newfile(self):
         self.new = Mainwindow()
         self.new.father = self
         self.new.move(self.x() + 100, self.y() + 100)
         self.new.show()
 
+    #剪切
     def cutTag(self):
         # 记录剪切数据
         self.cuts = {}
@@ -1060,16 +1156,20 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
         if len(self.selects) > 1:
             for index, tag in enumerate(self.selects):
                 # 记录点
-                self.cuts[index] = {'x': tag.x() - self.selects[0].x(),
-                                    'y': tag.y() - self.selects[0].y()}
+                self.cuts[index] = {
+                    'x': tag.x() - self.selects[0].x(),
+                    'y': tag.y() - self.selects[0].y()
+                }
                 dlist[tag.objectName()] = {'x': tag.x(), 'y': tag.y()}
                 # 记录连线
                 if tag.objectName() in self.lines:
                     self.cut_lines[index] = []
                     for tag_e in self.lines[tag.objectName()]:
-                        if self.window.findChild(Newlabel, tag_e) in self.selects:
+                        if self.window.findChild(Newlabel,
+                                                 tag_e) in self.selects:
                             tgt = self.window.findChild(Newlabel, tag_e)
-                            self.cut_lines[index].append(self.selects.index(tgt))
+                            self.cut_lines[index].append(
+                                self.selects.index(tgt))
                             llist.append([tag.objectName(), tgt.objectName()])
             # TODO:先遍历一遍后又遍历删除 需要优化
             while self.selects:
@@ -1093,23 +1193,28 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
             self.copys = {}
             self.copy_lines = {}
 
+    #复制
     def copyTag(self):
         self.copys = {}
         self.copy_lines = {}
         if self.selects:
             for index, tag in enumerate(self.selects):
                 # 记录点
-                self.copys[index] = {'x': tag.x() - self.selects[0].x(),
-                                     'y': tag.y() - self.selects[0].y(),
-                                     'text': tag.text(),
-                                     'Bstate': tag.Bstate}
+                self.copys[index] = {
+                    'x': tag.x() - self.selects[0].x(),
+                    'y': tag.y() - self.selects[0].y(),
+                    'text': tag.text(),
+                    'Bstate': tag.Bstate
+                }
                 # 记录连线
                 if tag.objectName() in self.lines:
                     self.copy_lines[index] = []
                     for tag_e in self.lines[tag.objectName()]:
-                        if self.window.findChild(Newlabel, tag_e) in self.selects:
+                        if self.window.findChild(Newlabel,
+                                                 tag_e) in self.selects:
                             tgt = self.window.findChild(Newlabel, tag_e)
-                            self.copy_lines[index].append(self.selects.index(tgt))
+                            self.copy_lines[index].append(
+                                self.selects.index(tgt))
 
             if self.cuts:
                 self.cuts = []
@@ -1130,7 +1235,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                                    mmode='x')
 
                 new.stateChanged.emit(None)
-                tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(),'B':new.Bstate}
+                tlist[new.objectName()] = {
+                    'obj': new,
+                    'x': new.x(),
+                    'y': new.y(),
+                    'B': new.Bstate
+                }
                 new.show()
                 news[tag] = new
             # 复制连线信息
@@ -1138,7 +1248,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 if tag in self.cut_lines:
                     for tag_e in self.cut_lines[tag]:
                         self.drawline_pt(news[tag], news[tag_e])
-                        llist.append([news[tag].objectName(),news[tag_e].objectName()])
+                        llist.append(
+                            [news[tag].objectName(), news[tag_e].objectName()])
             self.update()
             cmd = UndoPaste(self, tlist, llist, True)
             self.undostack.push(cmd)
@@ -1159,7 +1270,12 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 new.Bstate = self.copys[tag]['Bstate']
 
                 new.stateChanged.emit(None)
-                tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(), 'B': new.Bstate}
+                tlist[new.objectName()] = {
+                    'obj': new,
+                    'x': new.x(),
+                    'y': new.y(),
+                    'B': new.Bstate
+                }
                 new.show()
                 news[tag] = new
             # 复制连线信息
@@ -1167,7 +1283,8 @@ class Mainwindow(QMainWindow, Ui_MainWindow):
                 if tag in self.copy_lines:
                     for tag_e in self.copy_lines[tag]:
                         self.drawline_pt(news[tag], news[tag_e])
-                        llist.append([news[tag].objectName(),news[tag_e].objectName()])
+                        llist.append(
+                            [news[tag].objectName(), news[tag_e].objectName()])
             self.update()
             cmd = UndoInitTag(self, tlist, llist, first=True)
             self.undostack.push(cmd)
@@ -1223,35 +1340,44 @@ class Dlabel(QLabel):
         super().__init__(None, parent)
         self.window = self.parentWidget()
         self.setAcceptDrops(True)
-        self.setStyleSheet("border-width:0px;border-style: None; "
-                           "border-radius: 15px;background-color:rgb(240,240,240)")
+        self.setStyleSheet(
+            "border-width:0px;border-style: None; "
+            "border-radius: 15px;background-color:rgb(240,240,240)")
 
     def leaveEvent(self, event):
-        self.setStyleSheet("border-width:0px;border-style: None; "
-                           "border-radius: 15px;background-color:rgb(240,240,240)")
+        self.setStyleSheet(
+            "border-width:0px;border-style: None; "
+            "border-radius: 15px;background-color:rgb(240,240,240)")
         self.window.setCursor(QCursor(Qt.ArrowCursor))
 
     def dropEvent(self, event):
         text = event.mimeData().text()
         texts = text.split('\n')
-        # tag生成
         tlist = {}
-        if self.objectName() == 'tag':
+        if self.objectName() == 'tag':# tag生成
             for index, tag in enumerate(texts):
-                new = self.window.inittag(self.width() + tagw / 2, self.y() + (index + 1) * 80, mmode='w')
+                new = self.window.inittag(self.width() + tagw / 2,
+                                          self.y() + (index + 1) * 80,
+                                          mmode='w')
                 # new.move(self.width() + 20, self.y() + (index + 1) * 80)
                 new.setStyleSheet(new.sheet['B'])
                 new.Bstate = True
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
-                tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(), 'B': True}
+                tlist[new.objectName()] = {
+                    'obj': new,
+                    'x': new.x(),
+                    'y': new.y(),
+                    'B': True
+                }
             cmd = UndoInitTag(self.window, tlist, first=True)
             self.window.undostack.push(cmd)
-        # rel生成
-        else:
+        else:# rel生成
             for index, tag in enumerate(texts):
-                new = self.window.inittag(self.window.width() - self.width() - tagw, self.y() + (index + 1) * 80,
+                new = self.window.inittag(self.window.width() - self.width() -
+                                          tagw,
+                                          self.y() + (index + 1) * 80,
                                           mmode='-w')
                 # new.move(self.window.width() - self.width() - tagw, self.y() + (index + 1) * 80)
                 new.setStyleSheet(new.sheet['None'])
@@ -1259,13 +1385,19 @@ class Dlabel(QLabel):
                 new.state = None
                 new.stateChanged.emit(None)
                 new.setText(tag)
-                tlist[new.objectName()] = {'obj': new, 'x': new.x(), 'y': new.y(), 'B': new.Bstate}
+                tlist[new.objectName()] = {
+                    'obj': new,
+                    'x': new.x(),
+                    'y': new.y(),
+                    'B': new.Bstate
+                }
             cmd = UndoInitTag(self.window, tlist, first=True)
             self.window.undostack.push(cmd)
 
     def dragLeaveEvent(self, event):
-        self.setStyleSheet("border-width:0px;border-style: None; "
-                           "border-radius: 15px;background-color:rgb(240,240,240)")
+        self.setStyleSheet(
+            "border-width:0px;border-style: None; "
+            "border-radius: 15px;background-color:rgb(240,240,240)")
         self.window.setCursor(QCursor(Qt.ArrowCursor))
 
     def dragEnterEvent(self, event):
@@ -1288,8 +1420,14 @@ class New_D(QDialog, New_Form):
         num = self.spinBox.value()
         tlist = {}
         for _ in range(num):
-            tag = self.window.inittag(self.window.width() / 2, self.window.height() / 2)
-            tlist[tag.objectName()] = {'obj': tag, 'x': tag.x(), 'y': tag.y(), 'B': tag.Bstate}
+            tag = self.window.inittag(self.window.width() / 2,
+                                      self.window.height() / 2)
+            tlist[tag.objectName()] = {
+                'obj': tag,
+                'x': tag.x(),
+                'y': tag.y(),
+                'B': tag.Bstate
+            }
 
         cmd = UndoInitTag(self.window, tlist, first=True)
         self.window.undostack.push(cmd)
@@ -1305,13 +1443,18 @@ class Find_D(QDialog, Find_Form):
         self.get_all.setChecked(True)
         self.btn_next.clicked.connect(lambda: self.find(mode='N'))
         self.btn_prev.clicked.connect(lambda: self.find(mode='P'))
-        self.btn_reall.clicked.connect(lambda: self.replace(all=True))
+        self.btn_reall.clicked.connect(lambda: self.replace(all_=True))
         self.btn_replace.clicked.connect(lambda: self.replace())
 
         self.cur_find = -1
 
+    '''
+    查找
+    mode:查找下一个或上一个 ['N','P']
+    '''
     def find(self, mode):
         alltag = self.window.findChildren(Newlabel)
+        #确定查找范围 由单选框决定
         if self.get_sel.isChecked():
             tags = self.window.selects
         else:
@@ -1321,9 +1464,10 @@ class Find_D(QDialog, Find_Form):
         for tag in tags:
             if tgt in tag.text():
                 res = tag.text().find(tgt)
+                #匹配同一tag中全部结果
                 while res != -1:
                     allres.append([tag, res])
-                    res = tag.text().find(tgt, res + 1)
+                    res = tag.text().find(tgt, res + 1)#从当前匹配的下一字符再次寻找
 
         # 定位目标tag和index
         def setres():
@@ -1335,20 +1479,21 @@ class Find_D(QDialog, Find_Form):
                 tag.setSelection(index, len(tgt))
 
         # 更改当前查找索引索引
-        if mode == 'N':
+        if mode == 'N':#查找下一个
             self.cur_find += 1
             if self.cur_find > len(allres) - 1:
                 self.cur_find = 0
             setres()
 
-        else:
+        else:#查找上一个
             self.cur_find -= 1
             if self.cur_find < 0:
                 self.cur_find = len(allres) - 1
             setres()
 
-    def replace(self, all=False):
+    def replace(self, all_=False):
         alltag = self.window.findChildren(Newlabel)
+        #确定替换范围
         if self.get_sel.isChecked():
             tags = self.window.selects
         else:
@@ -1359,7 +1504,7 @@ class Find_D(QDialog, Find_Form):
         tgt = self.line_find_2.text()
 
         cur_rpc = []
-        if all:
+        if all_:
             for tag in tags:
                 if ori in tag.text():
                     new_t = tag.text().replace(ori, tgt, 1)
@@ -1371,11 +1516,11 @@ class Find_D(QDialog, Find_Form):
                     res = tag.text().find(ori)
                     if not cur_rpc:
                         cur_rpc.extend([tag, res])
-                    continue
-
+                        break
+            
             if cur_rpc:
                 tag, index = cur_rpc
-                new_t = tag.text()[0:index] + tgt + tag.text()[index + 1:]
+                new_t = tag.text().replace(ori,tgt,1) #新文本
                 tag.setText(new_t)
                 tag.stateChanged.emit('edit')
                 tag.setSelection(index, len(tgt))
